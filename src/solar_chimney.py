@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Zonnekachel berekeningsmodule voor EWF Tech Simulator.
@@ -146,7 +146,9 @@ def calculate_solar_chimney(df,
     air_temps = np.zeros((simulation_intervals__0, solar_chimney_segments__0), dtype=np.float64)
     temp_air_chimney_out__degC = np.zeros(simulation_intervals__0, dtype=np.float64)
     temp_air_chimney_average__degC = np.zeros(simulation_intervals__0, dtype=np.float64)
-    chimney_draft__Pa = np.zeros(simulation_intervals__0, dtype=np.float64)
+    chimney_delta__Pa = np.zeros(simulation_intervals__0, dtype=np.float64)
+    shunt_delta__Pa = np.zeros(simulation_intervals__0, dtype=np.float64)
+    outdoor_chimney_delta__Pa = np.zeros(simulation_intervals__0, dtype=np.float64)
 
     # Simulation loop
     #initial_guess = [40, 50, 22]  # [wall_temp, glass_temp, air_temp] in °C
@@ -182,12 +184,16 @@ def calculate_solar_chimney(df,
         temp_air_chimney_average__degC[interval] = (temp_air_office_out__degC + temp_air_chimney_out__degC[interval]) / 2
         temp_air_chimney_average__K = temp_air_chimney_average__degC[interval] + temp_0_degC__K
         temp_outdoor__K = df['temp_outdoor__degC'].iloc[interval] + temp_0_degC__K
-        chimney_draft__Pa[interval] = air_0C__kg_m_3 * (temp_0_degC__K / temp_outdoor__K -
-                                                    temp_0_degC__K / temp_air_chimney_average__K) * g__m_s_2 * solar_chimney_height__m
+        temp_air_office_out__K = temp_air_office_out__degC + temp_0_degC__K
+        chimney_delta__Pa[interval] = air_0C__kg_m_3 * (temp_0_degC__K / temp_air_chimney_average__K) * g__m_s_2 * solar_chimney_height__m
+        shunt_delta__Pa[interval] = air_0C__kg_m_3 * (temp_0_degC__K / temp_air_office_out__K ) * g__m_s_2 * solar_chimney_height__m
+        outdoor_chimney_delta__Pa[interval] = air_0C__kg_m_3 * (temp_0_degC__K / temp_outdoor__K) * g__m_s_2 * solar_chimney_height__m
 
     df['temp_air_chimney_out__degC'] = temp_air_chimney_out__degC
     df['temp_air_chimney_average__degC'] = temp_air_chimney_average__degC
-    df['chimney_draft__Pa'] = chimney_draft__Pa
+    df['chimney_delta__Pa'] = chimney_delta__Pa
+    df['shunt_delta__Pa'] = shunt_delta__Pa
+    df['outdoor_chimney_delta__Pa'] = outdoor_chimney_delta__Pa
     df['temp_air_heat_recovery_in__degC'] = df['temp_air_chimney_out__degC']
 
     # Optionally include segment temperatures

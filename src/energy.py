@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Electriciteitsberekeningsmodule voor EWF Tech Simulator.
@@ -9,7 +9,6 @@ Deze module berekent totale electriciteitsverbruik en afgeleide statistieken
 op basis van inputdata van diverse systemcomponenten. Incl. foutafhandeling.
 """
 
-import numpy as np
 import pandas as pd
 from ewf_utils import Wh_kWh_1, s_min_1, min_h_1
 
@@ -54,25 +53,6 @@ def calculate_energy(df):
     
     # Tel alle beschikbare electriciteitskolommen
     df['e__ewf_total__W'] = sum(e_cols)
-
-    # Maak zichtbaar wat er wel en niet is meegeteld (ontbrekende kolommen worden stil overgeslagen)
-    expected_cols = ['e_cascade_heat_pump__W', 'e_post_cascade_heat_pump__W', 'e_cascade_water_pump__W',
-                     'e_fan_supply__W', 'e_fan_exh__W', 'e_fan_heat_recovery__W']
-    not_counted = [col for col in expected_cols if col not in available_cols]
-    print("Electriciteit opgeteld uit:", [col for col in expected_cols if col in available_cols])
-    if not_counted:
-        print("WAARSCHUWING: niet meegeteld omdat de kolom ontbreekt:", not_counted)
-
-    # Waarschuw voor ongeldige of onwaarschijnlijke uren; NaN-uren worden door .mean() genegeerd
-    total_W = df['e__ewf_total__W']
-    n_invalid = int((~np.isfinite(total_W)).sum())
-    n_implausible = int((np.isfinite(total_W) & (total_W.abs() > 1e7)).sum())
-    if n_invalid:
-        print(f"WAARSCHUWING: {n_invalid} van {len(df)} uren hebben geen geldige waarde (NaN of oneindig) "
-              f"en worden genegeerd in het gemiddelde vermogen; de totale energie is daarop geschaald.")
-    if n_implausible:
-        print(f"WAARSCHUWING: {n_implausible} van {len(df)} uren hebben een onwaarschijnlijk hoog vermogen (> 10 MW). "
-              f"Controleer de invoer en instellingen; de uitkomst is dan onbetrouwbaar.")
 
     #Oscar(3sep26): Optie met index.freq wordt niet gebruikt maar gaf wel een opmerking dat dit niet klopt. Daarom verwijdert.
     # Leid tijdsinterval en totale uren af

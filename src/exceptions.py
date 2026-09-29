@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Custom exceptions voor EWF Tech Simulator.
@@ -151,7 +151,7 @@ def create_data_validation_error(column: str, expected_type: str, actual_value: 
 def create_configuration_error(parameter: str, valid_range: str, actual_value: Any = None) -> ConfigurationError:
     """Create a standardized configuration error."""
     return ConfigurationError(
-        message=f"Configuratiefout in parameter '{parameter}': verwacht {valid_range}, ontvangen {actual_value}.",
+        message=f"Configuratiefout in parameter '{parameter}'.",
         parameter=parameter,
         valid_range=valid_range,
         error_code=ERROR_CODES['CONFIGURATION']

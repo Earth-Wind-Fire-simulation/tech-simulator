@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Klimaatcascade berekeningsmodule voor EWF Tech Simulator.
@@ -13,7 +13,7 @@ en foutafhandeling.
 import numpy as np
 import pandas as pd
 from typing import Tuple, Optional
-from ewf_utils import g__m_s_2, temp_0_degC__K, water__kg_m_3, gas_constant_water__J_kg_1_K_1, air_0C__kg_m_3, air_20C__kg_m_3, water__J_kg_1_K_1, latent_heat_water__J_kg_1, vapour__J_kg_1_K_1, air__J_kg_1_K_1
+from ewf_utils import g__m_s_2, temp_0_degC__K, water__kg_m_3, gas_constant_water__J_kg_1_K_1, air_0C__kg_m_3, air_20C__kg_m_3, water__J_kg_1_K_1, latent_heat_water__J_kg_1, vapour__J_kg_1_K_1, air__J_kg_1_K_1, temp_air_office_in__degC
 from exceptions import create_data_validation_error, create_configuration_error, create_processing_error
 
 # Fixed values
@@ -131,6 +131,9 @@ def calculate_climate_cascade(df: pd.DataFrame,
     Returns:
         DataFrame with added columns for climate cascade outputs.
     """
+# Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
+    df = df.copy()
+
     if df is None:
         raise create_data_validation_error(
             column='df',
@@ -138,9 +141,6 @@ def calculate_climate_cascade(df: pd.DataFrame,
             actual_value=None,
             custom_message='Input DataFrame is vereist voor klimaatcascade berekening.'
         )
-
-# Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
-    df = df.copy()
 
     if df.empty:
         raise create_data_validation_error(
@@ -157,7 +157,7 @@ def calculate_climate_cascade(df: pd.DataFrame,
         'air_flow_office__m3_s_1',
         'humidity_outdoor_rel__0',
         'temp_outdoor__degC',
-        'overpressure_room_gain__Pa'
+        'overpressure_room_delta__Pa'
     ]
 
     missing_columns = [col for col in required_columns if col not in df.columns]
@@ -169,17 +169,6 @@ def calculate_climate_cascade(df: pd.DataFrame,
             custom_message=f'Input DataFrame mist vereiste kolommen voor klimaatcascade berekening: {missing_columns}. '
                            f'Beschikbare kolommen: {list(df.columns)}'
         )
-
-# Valideer parameters (ongeldige waarden leidden eerder tot ZeroDivisionError of UnboundLocalError)
-    if cascade_segments__0 < 1:
-        raise create_configuration_error('cascade_segments__0', '>= 1', cascade_segments__0)
-    for name, value in (('height_cascade__m', height_cascade__m),
-                        ('cascade_width__m', cascade_width__m),
-                        ('cascade_depth__m', cascade_depth__m)):
-        if not value > 0:
-            raise create_configuration_error(name, '> 0', value)
-    if nozzles_min__0 > nozzles_max__0:
-        raise create_configuration_error('nozzles_max__0', f'>= nozzles_min__0 ({nozzles_min__0})', nozzles_max__0)
 
 # Pre-calculate cascade geometry
     cascade_segment_height__m = height_cascade__m / cascade_segments__0
@@ -278,12 +267,24 @@ def calculate_climate_cascade(df: pd.DataFrame,
     df['temp_air_cascade_average__degC'] = (2/3 * df['temp_air_cascade_out__degC'] +
                                            1/3 * (df['temp_air_cascade_in__degC'] +
                                                   df['temp_air_cascade_out__degC']) / 2)
-    df['cascade_gain_hydro__Pa'] = (df['water_cascade__kg_s_1'] * g__m_s_2 * height_cascade__m /
+    df['cascade_delta_hydro__Pa'] = (df['water_cascade__kg_s_1'] * g__m_s_2 * height_cascade__m /
                                    ((cascade_width__m * cascade_depth__m) *
                                     (droplet_terminal__m_s_1 + df['cascade_air__m_s_1'])))
-    df['cascade_gain_therm__Pa'] = air_0C__kg_m_3 * ( temp_0_degC__K / (df['temp_outdoor__degC']+temp_0_degC__K) -
-                                                    temp_0_degC__K / (df['temp_air_cascade_average__degC']+temp_0_degC__K) ) * g__m_s_2 * height_cascade__m
-    df['cascade_gain__Pa'] = df['cascade_gain_hydro__Pa'] + df['cascade_gain_therm__Pa']
+    df['cascade_delta_therm__Pa'] = air_0C__kg_m_3 * ( temp_0_degC__K / (df['temp_air_cascade_average__degC']+temp_0_degC__K) ) * g__m_s_2 * height_cascade__m
+    df['cascade_delta__Pa'] = df['cascade_delta_hydro__Pa'] + df['cascade_delta_therm__Pa']
+    df['channel_in_delta__Pa'] = air_0C__kg_m_3 * ( temp_0_degC__K / (temp_air_office_in__degC+temp_0_degC__K)) * g__m_s_2 * height_cascade__m
+    df['outdoor_cascade_delta__Pa'] = air_0C__kg_m_3 * ( temp_0_degC__K / (df['temp_outdoor__degC']+temp_0_degC__K)) * g__m_s_2 * height_cascade__m
+
+    # Oscar 27aug26: efficiency for both fans now calculated in module occupancy
+    #df['eta_fan_supply__W0'] = (eta_fan_min__W0 + (df['air_flow_office__m3_s_1'] - fan_min__m3_s_1) /
+    #                     (fan_max__m3_s_1 - fan_min__m3_s_1) * (eta_fan_max__W0 - eta_fan_min__W0))
+
+    df['supply_fan__Pa'] = np.maximum(0, supply__Pa - df['overpressure_room_delta__Pa'] - df['cascade_delta__Pa']
+                                                        + np.maximum(df['outdoor_cascade_delta__Pa'],df['channel_in_delta__Pa']))
+#Oscar(17sep26): Formule aangepast voor trek in invoerkanaal. Oorspronkelijke formule:
+    #df['supply_fan__Pa'] = np.maximum(0, supply__Pa - df['overpressure_room_delta__Pa'] - df['cascade_delta__Pa'] + df['outdoor_cascade_delta__Pa'])
+
+    df['e_fan_supply__W'] = df['supply_fan__Pa'] * df['air_flow_office__m3_s_1'] / df['eta_fan__W0']
 
     df['e_cascade_water_pump__W'] = ( ( df['water_cascade__kg_s_1'] / water__kg_m_3 ) *
                                     (water__kg_m_3 * g__m_s_2 * height_cascade__m +
@@ -291,7 +292,7 @@ def calculate_climate_cascade(df: pd.DataFrame,
                                      loss_cascade_water_rest__Pa) / eta_cascade_water_pump__W0)
 
     df['cascade_heat_pump_is_heating__sign'] = np.sign(temp_water_cascade_in__degC - df['temp_water_cascade_out__degC'])
-#update Oscar (30jan26): prepended minus sign inserted for cooling to have positive power (temperature difference is negativer)
+#update Oscar (30jan26): prepended minus sign inserted for cooling to have positive power (temperature difference is negative)
     df['cop_cascade_heat_pump__W0'] = np.where(df['cascade_heat_pump_is_heating__sign'] == 1,
                                               cop_heat_pump_heating__W0,
                                               -cop_heat_pump_cooling__W0)
@@ -306,11 +307,5 @@ def calculate_climate_cascade(df: pd.DataFrame,
     df['e_post_cascade_heat_pump__W'] = (df['air_flow_office__m3_s_1'] * air_20C__kg_m_3 *
                                         air__J_kg_1_K_1 * np.maximum(0, temp_air_office_in__degC - df['temp_air_cascade_out__degC']) /
                                         df['cop_post_cascade_heat_pump__W0'])
-
-    # Oscar 27aug26: efficiency for both fans now calculated in module occupancy
-    #df['eta_fan_supply__W0'] = (eta_fan_min__W0 + (df['air_flow_office__m3_s_1'] - fan_min__m3_s_1) /
-    #                     (fan_max__m3_s_1 - fan_min__m3_s_1) * (eta_fan_max__W0 - eta_fan_min__W0))
-    df['supply_fan__Pa'] = np.maximum(0, supply__Pa - df['overpressure_room_gain__Pa'] - df['cascade_gain__Pa'])
-    df['e_fan_supply__W'] = df['supply_fan__Pa'] * df['air_flow_office__m3_s_1'] / df['eta_fan__W0']
 
     return df

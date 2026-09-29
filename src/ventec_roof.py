@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Ventec dak berekeningsmodule voor EWF Tech Simulator.
@@ -11,7 +11,6 @@ en Venturi-effect berekeningen.
 """
 
 import numpy as np
-from exceptions import create_configuration_error
 from ewf_utils import air_20C__kg_m_3, wind_local_displacement_height__m, wind_local_roughness_length__m, wind_correction_factor__0, venturi_wind_acceleration__0
 
 # Vaste codewaarden
@@ -39,9 +38,6 @@ def calculate_ventec_roof(df,
     if df is None:
         raise ValueError("Input DataFrame is vereist voor ventec dak berekening.")
 
-    if venturi_throat_height__m not in (1, 2):
-        raise create_configuration_error('venturi_throat_height__m', '1 of 2 (m)', venturi_throat_height__m)
-
     df = df.copy()
 
     # Gevectoriseerde berekeningen
@@ -63,9 +59,13 @@ def calculate_ventec_roof(df,
     )
 
     df['venturi_draft__Pa'] = df['wind_venturi_pressure_coefficient__0'] * 0.5 * air_20C__kg_m_3 * np.power(df['wind_venturi_accelerated__m_s_1'], 2)
-    #Als venturi trekt is 'suction' negatief. Dus '+' in formule voor de fan.
-    df['exhaust_fan__Pa'] = np.maximum(0, exhaust__Pa - df['chimney_draft__Pa'] + df['venturi_draft__Pa'])
-    #Oscar 27aug26: efficiency for both fans now calculated in module occupancy
+    #Als venturi trekt is 'draft' negatief. Dus '+' in formule voor de fan.
+    df['exhaust_fan__Pa'] = np.maximum(0, exhaust__Pa + df['chimney_delta__Pa'] - np.minimum(df['outdoor_chimney_delta__Pa'],df['shunt_delta__Pa']) + df['venturi_draft__Pa'])
+
+#Oscar(17sep26): formule gecorrigeerd voor trek in de shunt. Oorspronkelijke formule:
+    #df['exhaust_fan__Pa'] = np.maximum(0, exhaust__Pa + df['chimney_delta__Pa'] - df['outdoor_chimney_delta__Pa'] + df['venturi_draft__Pa'])
+
+#Oscar 27aug26: efficiency for both fans now calculated in module occupancy
     #df['eta_fan_exh__W0'] = (eta_fan_min__W0 + (df['air_flow_office__m3_s_1'] - fan_min__m3_s_1) /
     #                    (fan_max__m3_s_1 - fan_min__m3_s_1) * (eta_fan_max__W0 - eta_fan_min__W0))
     #Multiply pressure with volume flow.

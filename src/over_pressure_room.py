@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Overdrukkamer berekeningsmodule voor EWF Tech Simulator.
@@ -54,6 +54,6 @@ def calculate_overpressure_room(df, wind_overpressure_inflow_height__m=17.0):
 
     # Voeg overdrukwinst toe aan DataFrame
     df['wind_overpressure_inflow__m_s_1'] = wind_overpressure_inflow__m_s_1
-    df['overpressure_room_gain__Pa'] = overpressure_room_gain__Pa
+    df['overpressure_room_delta__Pa'] = overpressure_room_gain__Pa
 
     return df

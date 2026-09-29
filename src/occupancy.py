@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
 
 """
 Bezetting berekeningsmodule voor EWF Tech Simulator.
@@ -14,11 +14,10 @@ import numpy as np
 import pandas as pd
 import os
 import shutil
-import tempfile
 from datetime import datetime, timedelta
 from typing import Optional
 from ewf_utils import dm3_m_3, air_flow_office_set__dm3_s_1_p_1, flow_modulation_depth__0, fan_modulation_depth__0, eta_fan_min__W0, eta_fan_max__W0
-from exceptions import create_file_not_found_error, create_permission_error, create_data_validation_error, create_configuration_error, create_processing_error
+from exceptions import create_file_not_found_error, create_permission_error, create_data_validation_error, create_processing_error
 
 # Calculation occupancy and derived air flow
 def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p: float = 165) -> pd.DataFrame:
@@ -41,40 +40,28 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
         ProcessingError: Als bezettingsberekening faalt.
         DataValidationError: Als input data ongeldig is.
     """
-    if df is None:
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame',
-            actual_value=None,
-            custom_message='Input DataFrame is vereist voor bezettingsberekening.'
-        )
-
-    if pad is None or pad == "" or pad == "<null>":
-        raise create_data_validation_error(
-            column='pad',
-            expected_type='str (non-empty)',
-            actual_value=pad,
-            custom_message='Geen geldig bestandspad ontvangen voor bezettingsdata.'
-        )
-
-    if not occupancy_mean__p > 0:
-        raise create_configuration_error('occupancy_mean__p', '> 0', occupancy_mean__p)
-
     # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()
-
-    # Lees occupancy CSV veilig via een tijdelijke kopie in de tijdelijke map van het systeem
-    temp_pad = None
+    
+    # Lees occupancy CSV veilig via copy-methode
     try:
-        fd, temp_pad = tempfile.mkstemp(prefix='ewf_occupancy_', suffix=os.path.splitext(pad)[1])
-        os.close(fd)
-
+        # Maak tijdelijke kopie
+        base_name = os.path.splitext(pad)[0]
+        extension = os.path.splitext(pad)[1]
+        temp_pad = f"{base_name}_temp{extension}"
+        
         # Kopieer origineel
         shutil.copy2(pad, temp_pad)
-
+        
         # Lees gekopieerde bestand
         df_occ = pd.read_csv(temp_pad, sep=';', decimal=',')
-
+        
+        # Ruim kopie op na lezen
+        try:
+            os.remove(temp_pad)
+        except Exception as cleanup_error:
+            pass  # Stil mislukte cleanup
+            
     except FileNotFoundError:
         raise create_file_not_found_error(pad)
     except PermissionError:
@@ -85,14 +72,7 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
             message=f"Onverwachte fout bij het lezen van occupancy data: {str(e)}",
             data_info={'file_path': pad, 'error_type': type(e).__name__}
         )
-    finally:
-        # Ruim de tijdelijke kopie altijd op, ook als het lezen mislukt
-        if temp_pad and os.path.exists(temp_pad):
-            try:
-                os.remove(temp_pad)
-            except OSError:
-                pass
-
+    
     # Controleer vereiste kolom
     if 'occupancyperc' not in df_occ.columns:
         raise create_data_validation_error(
@@ -107,9 +87,6 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
     # Gebruik de kleinste lengte om mismatch te voorkomen
     target_uren = min(data_uren, occupancy_uren)
     print("aantal uren in simulatie: ",target_uren)
-    if data_uren != occupancy_uren:
-        print(f"WAARSCHUWING: weerdata heeft {data_uren} uren, bezettingsdata {occupancy_uren} uren; "
-              f"de simulatie wordt ingekort tot {target_uren} uren. Controleer of beide bestanden hetzelfde jaar betreffen.")
 
     # Pas DataFrame aan als nodig
     if len(df) > target_uren:
