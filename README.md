@@ -9,6 +9,7 @@ A modular Python-based simulator of the Earth-Wind-Fire (EWF) ventilation system
 * [Developing](#developing) 
 * [Features](#features)
 * [Status](#status)
+* [Contributing, security and citation](#contributing-security-and-citation)
 * [License](#license)
 * [Credits](#credits)
 
@@ -98,7 +99,7 @@ This section is for users who want to **extend or change the source code**.
 You can get the code from GitHub in several ways:
 - **Clone the repository** (recommended):  
   ```
-  git clone https://github.com/energietransitie/ewf-tech-simulator.git
+  git clone https://github.com/EWF-sim/tech-simulator.git
   ```
 - **Download ZIP**: Click the green **Code** button on the repo’s GitHub page and choose **Download ZIP**.  
 
@@ -136,6 +137,11 @@ List of features ready and TODOs for future development.
 ## Status
 Project is: _in progress_
 
+## Contributing, security and citation
+* Contributions are welcome, and you are free to fork this repository. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+* Please report security problems privately, as described in [SECURITY.md](./SECURITY.md).
+* To cite this software, use the metadata in [CITATION.cff](./CITATION.cff) (GitHub shows a *Cite this repository* button).
+
 ## License
 This software is available under the [Apache 2.0 license](./LICENSE), Copyright 2025 [Research group Energy Transition, Windesheim University of Applied Sciences](https://windesheim.nl/energietransitie) 
 
@@ -144,9 +150,6 @@ This software is a collaborative effort of:
 * Oscar Somsen · [@OscarSomsen](https://github.com/OscarSomsen)
 * Wiechert Eschbach · [@WiechertJ](https://github.com/WiechertJ)
 * Frank de Kimpe · [@frankdekimpe](https://github.com/frankdekimpe)
-
-Product owner:
-* Name · [@name](https://github.com/name)
 
 We use and gratefully acknowlegde the efforts of the makers of the following source code and libraries:
 * [needforheat-dutch-weather-software](https://github.com/energietransitie/needforheat-dutch-weather-software), by [@henriterhofte](https://github.com/henriterhofte) and contributors, licensed under [Apache 2.0](https://opensource.org/licenses/Apache-2.0)

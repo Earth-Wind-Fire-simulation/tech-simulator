@@ -1,0 +1,4 @@
+# Binary files: never try to diff or merge them as text
+*.docx binary
+*.3dm binary
+*.xlsx binary

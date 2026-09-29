@@ -1,0 +1,37 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Which component, which input files and which parameter values?
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message or output
+      description: Paste the complete message from the Grasshopper component.
+      render: text
+  - type: input
+    id: rhino
+    attributes:
+      label: Rhino version
+      placeholder: "Rhino 8 SR20 (8.20.25157.13001)"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Package versions
+      description: Paste the versions printed by the Bootstrap component (NumPy, pandas, SciPy, pytz, astral).
+      render: text

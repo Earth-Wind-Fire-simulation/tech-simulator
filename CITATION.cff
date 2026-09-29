@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software in your work, please cite it using the metadata below."
+title: "EWF Tech Simulator"
+type: software
+abstract: >-
+  A modular Python simulation of the Earth, Wind & Fire (EWF) ventilation system,
+  designed for Rhino 8 and Grasshopper. It estimates yearly electricity use from
+  hourly weather and occupancy data.
+authors:
+  - family-names: Somsen
+    given-names: Oscar
+    affiliation: "Windesheim University of Applied Sciences"
+  - family-names: Eschbach
+    given-names: Wiechert
+    affiliation: "Windesheim University of Applied Sciences"
+  - name-particle: de
+    family-names: Kimpe
+    given-names: Frank
+    affiliation: "Windesheim University of Applied Sciences"
+repository-code: "https://github.com/EWF-sim/tech-simulator"
+license: Apache-2.0
+keywords:
+  - ventilation
+  - building simulation
+  - energy transition
+  - Grasshopper
+  - Rhino

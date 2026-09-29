@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to achieve?
+      description: Describe the use case, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: model
+    attributes:
+      label: Does this change the simulation model or its results?
+      options:
+        - "No (interface, documentation, tooling)"
+        - "Yes (formulas, parameters or numerical results)"
+        - "Not sure"
+    validations:
+      required: true
