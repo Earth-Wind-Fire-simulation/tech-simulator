@@ -1,6 +1,6 @@
 # venv: ewf-tech
 
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
+# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy==1.13.1, openpyxl==3.1.5
 
 """
 Weergegevensverwerkingsmodule voor EWF Tech Simulator.
@@ -10,20 +10,31 @@ van diverse weergegevensformaten. Incl. foutafhandeling
 en bestandsbeschermingsmechanismen.
 """
 
-import pandas as pd
 import os
 import shutil
-from typing import Optional
-from exceptions import create_file_not_found_error, create_permission_error, create_data_validation_error, create_processing_error
+import tempfile
 
-def safe_read_csv(pad: str) -> Optional[pd.DataFrame]:
-    """Lees CSV bestand veilig zonder het origineel te verwijderen.
+import numpy as np
+import pandas as pd
+
+from exceptions import (
+    EWFException,
+    create_data_validation_error,
+    create_file_not_found_error,
+    create_permission_error,
+    create_processing_error,
+)
+
+
+def safe_read_csv(pad: str, decimal: str = '.') -> pd.DataFrame:
+    """Lees een eigen tijdelijke kopie; laat bron en buur-bestanden ongemoeid.
 
     Args:
         pad: Pad naar het CSV bestand.
+        decimal: Decimaalteken, '.' voor weerdata en ',' voor bezetting.
 
     Returns:
-        DataFrame met data of None bij fout.
+        DataFrame met data. Bij fouten wordt een EWFException opgegooid.
 
     Raises:
         DataFileError: Als het bestand niet gevonden kan worden.
@@ -32,7 +43,7 @@ def safe_read_csv(pad: str) -> Optional[pd.DataFrame]:
     """
     
     # 1. Controleer input
-    if pad is None or pad == "" or pad == "<null>":
+    if not isinstance(pad, (str, os.PathLike)) or not os.fspath(pad).strip() or os.fspath(pad) == "<null>":
         raise create_data_validation_error(
             column='pad',
             expected_type='str (non-empty)',
@@ -40,39 +51,23 @@ def safe_read_csv(pad: str) -> Optional[pd.DataFrame]:
             custom_message='Geen geldig bestandspad ontvangen voor weergegevens.'
         )
     
-    # 2. Maak een tijdelijke kopie
-    base_name = os.path.splitext(pad)[0]
-    extension = os.path.splitext(pad)[1]
-    temp_pad = f"{base_name}_temp{extension}"
-    
     try:
-        # 3. Kopieer het origineel
-        shutil.copy2(pad, temp_pad)
-        
-        # 4. Lees de kopie
-        df = pd.read_csv(temp_pad, sep=";")
-        
-        # 5. Verwijder de kopie
-        os.remove(temp_pad)
-        
-        # 6. Controleer origineel
-        if not os.path.exists(pad):
-            raise create_processing_error(
-                step="Bestandsverificatie",
-                message="Origineel bestand is verdwenen na kopie operatie",
-                data_info={'original_file': pad, 'temp_file': temp_pad}
-            )
-            
+        with tempfile.TemporaryDirectory(prefix='ewf-csv-') as temp_dir:
+            temp_pad = os.path.join(temp_dir, 'input.csv')
+            shutil.copyfile(pad, temp_pad)
+            df = pd.read_csv(temp_pad, sep=';', decimal=decimal)
         return df
         
     except FileNotFoundError:
         raise create_file_not_found_error(pad)
     except PermissionError:
         raise create_permission_error(pad, "lezen")
-    except Exception as e:
+    except EWFException:
+        raise
+    except (OSError, ValueError, pd.errors.ParserError) as e:
         raise create_processing_error(
             step="CSV lezen",
-            message=f"Onverwachte fout bij het lezen van weather data: {str(e)}",
+            message=f"Fout bij het lezen van CSV-data: {e}",
             data_info={'file_path': pad, 'error_type': type(e).__name__}
         )
 
@@ -97,6 +92,15 @@ def retrieve_weather_data(pad: str) -> pd.DataFrame:
     """
     try:
         df = safe_read_csv(pad)
+        if df.empty:
+            raise create_data_validation_error('df', 'niet-lege weerdata')
+        for column in ['FH', 'T', 'Q', 'P', 'U']:
+            if column not in df or not pd.api.types.is_numeric_dtype(df[column]):
+                raise create_data_validation_error(column, 'numerieke KNMI-kolom')
+            if df[column].isna().any() or not np.isfinite(df[column].to_numpy(dtype=float)).all():
+                raise create_data_validation_error(column, 'eindige KNMI-waarden')
+        if (df[['FH', 'Q']] < 0).any().any() or (df['P'] <= 0).any() or not df['U'].between(0, 100).all():
+            raise create_data_validation_error('FH/Q/P/U', 'wind en straling >= 0, druk > 0, vochtigheid 0..100')
         
         # Haal relevante kolommen uit dataframe
         wind = df['FH']
@@ -120,20 +124,14 @@ def retrieve_weather_data(pad: str) -> pd.DataFrame:
             'Air_outdoor__Pa': druk,
             'humidity_outdoor_rel__0': vocht
         })
-        
-        # Controleer of resultaat geldig is
-        #if df_weather is None or len(df_weather) == 0:
-        #    raise create_processing_error(
-        #        step="Weergegevens validatie",
-        #        message="Geen geldige weergegevens gevonden in het bestand. Controleer of het bestand correcte data bevat.",
-        #        data_info={'file_path': pad, 'data_length': len(df_weather) if df_weather is not None else 0}
-        #    )
-        
+                
         return df_weather
         
-    except Exception as e:
+    except EWFException:
+        raise
+    except (ValueError, TypeError, KeyError, ArithmeticError) as e:
         raise create_processing_error(
             step="Weergegevens verwerking",
-            message=f"Fout bij het verwerken van weergegevens: {str(e)}. Controleer het bestandsformaat en inhoud.",
+            message=f"Fout bij het verwerken van weergegevens: {e}. Controleer het bestandsformaat en inhoud.",
             data_info={'file_path': pad, 'error_type': type(e).__name__}
         )
