@@ -70,7 +70,7 @@ def calculate_energy(df):
             raise create_data_validation_error(column.name, 'eindig niet-negatief vermogen in W')
     
     # Tel alle beschikbare electriciteitskolommen
-    df['e__ewf_total__W'] = sum(e_cols)
+    df['e__ewf_total__W'] = sum(e_cols, start=pd.Series(0.0, index=df.index))
     if not np.isfinite(df['e__ewf_total__W']).all():
         raise create_data_validation_error('e__ewf_total__W', 'eindig totaalvermogen in W')
 

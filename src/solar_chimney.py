@@ -184,9 +184,10 @@ def calculate_solar_chimney(df,
     
     # Batch solar calculations (vectorized waar mogelijk)
     # Probeer vectorized astral calculations (complex - kan niet altijd vectorized worden)
+    location = Location(lc)
     for i in range(len(tb)):
-        az[i] = Location(lc).solar_azimuth(tb.iloc[i])  # Azimut: Noord = 0, Oost = 90
-        el[i] = Location(lc).solar_elevation(tb.iloc[i])  # Elevatie: Hoogte boven de horizon
+        az[i] = location.solar_azimuth(tb.iloc[i])  # Azimut: Noord = 0, Oost = 90
+        el[i] = location.solar_elevation(tb.iloc[i])  # Elevatie: Hoogte boven de horizon
         factor[i] = np.max([np.cos((np.pi / 180) * el[i]) * np.cos((np.pi / 180) * (hoek - az[i])), 0])
     df['azimut'] = az
     df['elevatie'] = el

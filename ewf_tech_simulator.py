@@ -70,6 +70,14 @@ def file_hash(path):
         return hashlib.sha256(stream.read()).hexdigest()
 
 
+def package_version(package):
+    """Report-only version lookup; None when the distribution is not installed."""
+    try:
+        return metadata.version(package)
+    except metadata.PackageNotFoundError:
+        return None
+
+
 def frame_summary(frame):
     """Count invalid numerical values rather than silently dropping them."""
     numeric = frame.select_dtypes(include=[np.number])
@@ -153,7 +161,7 @@ def run_simulation(weather_path, occupancy_path, year, hours=24, start_row=0,
         "python": sys.version,
         "executable": sys.executable,
         "platform": platform.platform(),
-        "packages": {package: metadata.version(package) for package in (
+        "packages": {package: package_version(package) for package in (
             "numpy", "pandas", "scipy", "astral", "pytz", "openpyxl", "python-dateutil"
         )},
         "sha256": before,
