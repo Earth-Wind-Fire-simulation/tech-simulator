@@ -18,6 +18,7 @@ from datetime import date, datetime
 from importlib import metadata
 from pathlib import Path
 from time import perf_counter
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT / "src") not in sys.path:
@@ -36,7 +37,7 @@ import weather
 from exceptions import EWFException
 
 
-def example_parameters():
+def example_parameters() -> Dict[str, Any]:
     """Load example-building defaults from input/simulation_parameters_python.json.
 
     Values are in the units carried by their names.
@@ -46,7 +47,7 @@ def example_parameters():
     )
 
 
-def load_parameters(path):
+def load_parameters(path: Union[str, Path]) -> Dict[str, Any]:
     """Overlay a JSON parameter file on the example defaults; reject misspellings."""
     parameters = example_parameters()
     overrides = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -64,13 +65,13 @@ def load_parameters(path):
     return parameters
 
 
-def file_hash(path):
+def file_hash(path: Union[str, Path]) -> str:
     """SHA-256 identifies the exact source and data used by an observation."""
     with Path(path).open("rb") as stream:
         return hashlib.sha256(stream.read()).hexdigest()
 
 
-def package_version(package):
+def package_version(package: str) -> Optional[str]:
     """Report-only version lookup; None when the distribution is not installed."""
     try:
         return metadata.version(package)
@@ -78,7 +79,7 @@ def package_version(package):
         return None
 
 
-def frame_summary(frame):
+def frame_summary(frame: pd.DataFrame) -> Dict[str, Any]:
     """Count invalid numerical values rather than silently dropping them."""
     numeric = frame.select_dtypes(include=[np.number])
     invalid = ~np.isfinite(numeric)
@@ -93,8 +94,14 @@ def frame_summary(frame):
     }
 
 
-def run_simulation(weather_path, occupancy_path, year, hours=24, start_row=0,
-                   parameters=None):
+def run_simulation(
+    weather_path: Union[str, Path],
+    occupancy_path: Union[str, Path],
+    year: int,
+    hours: Optional[int] = 24,
+    start_row: int = 0,
+    parameters: Optional[Dict[str, Any]] = None,
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """Run the real component order; None hours selects the complete input year.
 
     Occupancy runs before slicing, preserving its original annual calendar logic.
@@ -115,7 +122,7 @@ def run_simulation(weather_path, occupancy_path, year, hours=24, start_row=0,
     before = {str(path.resolve()): file_hash(path) for path in protected}
     stages = {}
 
-    def observe(name, calculation, *args, **kwargs):
+    def observe(name: str, calculation: Any, *args: Any, **kwargs: Any) -> Any:
         input_frame = args[0] if args else kwargs.get("df")
         original = input_frame.copy(deep=True) if isinstance(input_frame, pd.DataFrame) else None
         started = perf_counter()
@@ -178,7 +185,7 @@ def run_simulation(weather_path, occupancy_path, year, hours=24, start_row=0,
     return frame, report
 
 
-def compare_export(frame, export_path):
+def compare_export(frame: pd.DataFrame, export_path: Union[str, Path]) -> Dict[str, Any]:
     """Compare every output column, including matching NaN/infinity positions.
 
     Tolerances allow spreadsheet float serialization, not engineering error:
@@ -214,8 +221,20 @@ def compare_export(frame, export_path):
     return comparison
 
 
-def export_xlsx(frame, folder, parameters, year, mean, total, auteur="", organisatie="",
-                project="", omschrijving="", site="", gebouw=""):
+def export_xlsx(
+    frame: pd.DataFrame,
+    folder: Union[str, Path],
+    parameters: Dict[str, Any],
+    year: int,
+    mean: float,
+    total: float,
+    auteur: str = "",
+    organisatie: str = "",
+    project: str = "",
+    omschrijving: str = "",
+    site: str = "",
+    gebouw: str = "",
+) -> Path:
     """Write <YYYY-MM-DDTHHMM>-ewf-sim-data_total.xlsx in folder.
 
     Sheets: Info, Inputdata, Outputdata. Returns the new file's path; never overwrites.
@@ -282,7 +301,7 @@ def export_xlsx(frame, folder, parameters, year, mean, total, auteur="", organis
     return path
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--weather", type=Path, help="Weather CSV; defaults to De Bilt for the chosen year")
     parser.add_argument("--occupancy", type=Path, help="Occupancy CSV; defaults to the example for the chosen year")

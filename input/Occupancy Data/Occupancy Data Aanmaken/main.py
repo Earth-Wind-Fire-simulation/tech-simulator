@@ -19,11 +19,11 @@ def dagtype(dagst):
         return 3  # vakantie = zondag
 
     # retourneer anders 1 = werkdag, 2 = zaterdag of 3 = zondag
-    if dagst.weekday() == 6:
+    if dagst.weekday() == 6: # zondag
         return 3
-    if dagst.weekday() == 5:
+    if dagst.weekday() == 5: # zaterdag
         return 2
-    return 1
+    return 1 # weekdag
 
 #definitie van de bezetting (in procent) per uur voor ieder dagtype
 werkdag = np.array([ 0,  0,  0,  0,  0,  0,
