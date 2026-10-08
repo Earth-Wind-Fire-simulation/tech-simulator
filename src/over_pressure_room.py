@@ -15,13 +15,14 @@ from ewf_utils import (
     wind_local_displacement_height__m,
     wind_local_roughness_length__m,
 )
-from schemas import OverpressureFrame, OverpressureParams
+from schemas import OverpressureFrame, OverpressureParams, validate_inputs
 
 # Vaste codewaarden
 wind_overpressure_inflow_threshold__m_s_1 = 2.5  # Drempel windsnelheid uit vergelijking
 wind_overpressure_coefficient__0 = 0.8  # Coëfficiënt uit vergelijking
 
 # Berekening van overdrukkamercondities
+@validate_inputs(OverpressureParams, OverpressureFrame)
 def calculate_overpressure_room(df, wind_overpressure_inflow_height__m=17.0):
     """Bereken overdrukkamercondities op basis van wind en temperatuur.
 
@@ -33,10 +34,6 @@ def calculate_overpressure_room(df, wind_overpressure_inflow_height__m=17.0):
         Kopie met temp_overpressure_in__degC, temp_overpressure_out__degC,
         wind_overpressure_inflow__m_s_1 en overpressure_room_delta__Pa.
     """
-    params = OverpressureParams(wind_overpressure_inflow_height__m=wind_overpressure_inflow_height__m)
-    OverpressureFrame(df=df)
-    wind_overpressure_inflow_height__m = params.wind_overpressure_inflow_height__m
-    
     # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()
     

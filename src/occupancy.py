@@ -18,11 +18,12 @@ from ewf_utils import (
     fan_modulation_depth__0,
     flow_modulation_depth__0,
 )
-from schemas import OccupancyFile, OccupancyFrame, OccupancyParams
+from schemas import OccupancyFile, OccupancyFrame, OccupancyParams, validate_inputs
 from weather import safe_read_csv
 
 
 # Calculation occupancy and derived air flow
+@validate_inputs(OccupancyParams, OccupancyFrame)
 def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p: float = 165) -> pd.DataFrame:
     """Bereken bezetting en afgeleide luchtstroom.
 
@@ -45,10 +46,6 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
         ProcessingError: Als bezettingsberekening faalt.
         DataValidationError: Als input data ongeldig is.
     """
-    params = OccupancyParams(jaar=jaar, occupancy_mean__p=occupancy_mean__p)
-    OccupancyFrame(df=df)
-    jaar = params.jaar
-    occupancy_mean__p = params.occupancy_mean__p
     start = datetime(jaar, 1, 1, 0)
     df = df.copy()
     df_occ = safe_read_csv(pad, decimal=',')

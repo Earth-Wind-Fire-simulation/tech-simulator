@@ -24,7 +24,7 @@ from ewf_utils import (
 from exceptions import (
     create_processing_error,
 )
-from schemas import CascadeFrame, CascadeParams
+from schemas import CascadeFrame, CascadeParams, validate_inputs
 
 # Fixed values
 nozzle__kg_s_1 = 0.7
@@ -106,6 +106,7 @@ def segment_equations(air_in__degC: float, water_in__degC: float, vapour_in__kg_
     return air_out__degC, water_out__degC, vapour_out__kg_m_3, droplets_out__kg_m_3
 
 #Evaluate climate cascade and repeat this to optimize number of nozzles
+@validate_inputs(CascadeParams, CascadeFrame)
 def calculate_climate_cascade(df: pd.DataFrame, 
                              height_cascade__m: float = 10.0,
                              cascade_width__m: float = 3.0,
@@ -148,32 +149,7 @@ def calculate_climate_cascade(df: pd.DataFrame,
             negative vapour mass, depleted droplets or nonpositive kelvin.
             Such a trial is not used to select the number of nozzles.
     """
-    params = CascadeParams(
-        height_cascade__m=height_cascade__m,
-        cascade_width__m=cascade_width__m,
-        cascade_depth__m=cascade_depth__m,
-        cascade_segments__0=cascade_segments__0,
-        temp_water_cascade_in__degC=temp_water_cascade_in__degC,
-        temp_air_in_threshold__degC=temp_air_in_threshold__degC,
-        temp_air_cascade_out_set__degC=temp_air_cascade_out_set__degC,
-        humidity_abs_set__g_kg_1=humidity_abs_set__g_kg_1,
-        nozzles_min__0=nozzles_min__0,
-        nozzles_max__0=nozzles_max__0,
-        loss_cascade_water_nozzle__Pa=loss_cascade_water_nozzle__Pa,
-    )
-    CascadeFrame(df=df)
     df = df.copy()
-    height_cascade__m = params.height_cascade__m
-    cascade_width__m = params.cascade_width__m
-    cascade_depth__m = params.cascade_depth__m
-    cascade_segments__0 = params.cascade_segments__0
-    temp_water_cascade_in__degC = params.temp_water_cascade_in__degC
-    temp_air_in_threshold__degC = params.temp_air_in_threshold__degC
-    temp_air_cascade_out_set__degC = params.temp_air_cascade_out_set__degC
-    humidity_abs_set__g_kg_1 = params.humidity_abs_set__g_kg_1
-    nozzles_min__0 = params.nozzles_min__0
-    nozzles_max__0 = params.nozzles_max__0
-    loss_cascade_water_nozzle__Pa = params.loss_cascade_water_nozzle__Pa
 
 # Pre-calculate cascade geometry
     cascade_segment_height__m = height_cascade__m / cascade_segments__0

@@ -16,13 +16,14 @@ from ewf_utils import (
     wind_local_displacement_height__m,
     wind_local_roughness_length__m,
 )
-from schemas import FiniteOutputFrame, VentecFrame, VentecParams
+from schemas import FiniteOutputFrame, VentecFrame, VentecParams, validate_inputs
 
 # Vaste codewaarden
 #venturi_wind_acceleration__0 = 1.25
 venturi_closed__bool = False
 exhaust__Pa = 100.0 # TODO: expose input
 
+@validate_inputs(VentecParams, VentecFrame)
 def calculate_ventec_roof(df,
                         venturi_ejector_height__m=20.0,
                         venturi_throat_height__m=1.0,
@@ -46,16 +47,6 @@ def calculate_ventec_roof(df,
         Zonder luchtdebiet zijn coefficient, trek en ventilatorwaarden nul:
         een inactieve bedrijfsstand, geen voorspelling van statische dakdruk.
     """
-    params = VentecParams(
-        venturi_ejector_height__m=venturi_ejector_height__m,
-        venturi_throat_height__m=venturi_throat_height__m,
-        venturi_ejector_opening__m2=venturi_ejector_opening__m2,
-    )
-    VentecFrame(df=df)
-    venturi_ejector_height__m = params.venturi_ejector_height__m
-    venturi_throat_height__m = params.venturi_throat_height__m
-    venturi_ejector_opening__m2 = params.venturi_ejector_opening__m2
-
     df = df.copy()
 
     # Gevectoriseerde berekeningen

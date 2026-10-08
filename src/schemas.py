@@ -1,10 +1,12 @@
 """Pydantic models for simulator inputs and configuration."""
 
 from datetime import datetime
+from functools import wraps
+from inspect import signature
 from math import isfinite
 from numbers import Real
 from os import PathLike
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, Any, Callable, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -77,6 +79,33 @@ class FrameModel(BaseModel):
             if "ne" in constraints and (values == constraints["ne"]).any():
                 raise ValueError(f"{column} must not equal {constraints['ne']}")
         return self
+
+
+def validate_inputs(
+    params_model: type[ParamsModel],
+    frame_model: type[FrameModel],
+    frame_arg: str = "df",
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Validate and coerce calculation inputs without changing public signatures."""
+    def decorator(function: Callable[..., Any]) -> Callable[..., Any]:
+        function_signature = signature(function)
+
+        @wraps(function)
+        def validated_function(*args: Any, **kwargs: Any) -> Any:
+            bound = function_signature.bind(*args, **kwargs)
+            bound.apply_defaults()
+            params = params_model.model_validate({
+                name: bound.arguments[name]
+                for name in params_model.model_fields
+            })
+            frame_model(df=bound.arguments[frame_arg])
+            for name in params_model.model_fields:
+                bound.arguments[name] = getattr(params, name)
+            return function(*bound.args, **bound.kwargs)
+
+        return validated_function
+
+    return decorator
 
 
 class CascadeParams(ParamsModel):

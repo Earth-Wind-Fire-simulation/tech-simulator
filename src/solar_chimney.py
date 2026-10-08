@@ -22,7 +22,7 @@ from ewf_utils import (
 from exceptions import (
     create_processing_error,
 )
-from schemas import SolarChimneyFrame, SolarChimneyParams
+from schemas import SolarChimneyFrame, SolarChimneyParams, validate_inputs
 
 # Codewaarden
 solar_chimney_tilt__degV = 0
@@ -61,6 +61,7 @@ def segment_equations(vars, air_in_temp__degC, temp_outdoor__degC, air_flow_offi
     eq3 = conv_wall_air__W + rad_wall_glass__W - irradiance__W      # Heat balance wall
     return [eq1, eq2, eq3]
 
+@validate_inputs(SolarChimneyParams, SolarChimneyFrame)
 def calculate_solar_chimney(df,
                            weather_location__degN=52.37,
                            weather_location__degE=4.90,
@@ -102,30 +103,6 @@ def calculate_solar_chimney(df,
             residual exceeds 0.001 W plus one millionth of the segment load.
             This is a numerical screening limit, not an accuracy certificate.
     """
-    params = SolarChimneyParams(
-        weather_location__degN=weather_location__degN,
-        weather_location__degE=weather_location__degE,
-        solar_chimney_height__m=solar_chimney_height__m,
-        solar_chimney_segments__0=solar_chimney_segments__0,
-        solar_chimney_width__m=solar_chimney_width__m,
-        solar_chimney_depth__m=solar_chimney_depth__m,
-        solar_chimney_azimuth__degN=solar_chimney_azimuth__degN,
-        glazing_transmittance__0=glazing_transmittance__0,
-        glazing__pct=glazing__pct,
-        solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1=solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1,
-    )
-    SolarChimneyFrame(df=df)
-    weather_location__degN = params.weather_location__degN
-    weather_location__degE = params.weather_location__degE
-    solar_chimney_height__m = params.solar_chimney_height__m
-    solar_chimney_segments__0 = params.solar_chimney_segments__0
-    solar_chimney_width__m = params.solar_chimney_width__m
-    solar_chimney_depth__m = params.solar_chimney_depth__m
-    solar_chimney_azimuth__degN = params.solar_chimney_azimuth__degN
-    glazing_transmittance__0 = params.glazing_transmittance__0
-    glazing__pct = params.glazing__pct
-    solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1 = params.solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1
-    
     # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()
     
