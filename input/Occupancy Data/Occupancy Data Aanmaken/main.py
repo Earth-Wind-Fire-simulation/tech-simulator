@@ -1,6 +1,8 @@
-import pandas as pd
-import numpy as np
 from datetime import datetime
+
+import numpy as np
+import pandas as pd
+
 
 #deze functie bepaalt welk dagtpye moet worden gebruikt voor de bezetting
 def dagtype(dagst):
@@ -17,13 +19,11 @@ def dagtype(dagst):
         return 3  # vakantie = zondag
 
     # retourneer anders 1 = werkdag, 2 = zaterdag of 3 = zondag
-    match dagst.weekday():
-        case 6:
-            return 3 # 6 = zondag
-        case 5:
-            return 2 # 5 = zaterdag
-        case _:
-            return 1 # 0-4 = werkdag
+    if dagst.weekday() == 6: # zondag
+        return 3
+    if dagst.weekday() == 5: # zaterdag
+        return 2
+    return 1 # weekdag
 
 #definitie van de bezetting (in procent) per uur voor ieder dagtype
 werkdag = np.array([ 0,  0,  0,  0,  0,  0,
@@ -64,13 +64,12 @@ for index in df.index:
 
     df.loc[index, 'daytype(WrkSaSu)'] = dagtype(dagst)
 
-    match dagtype(dagst):
-        case 1:
-            df.loc[index, 'occupancy(perc)'] = werkdag[dagst.hour]
-        case 2:
-            df.loc[index, 'occupancy(perc)'] = zaterdag[dagst.hour]
-        case 3:
-            df.loc[index, 'occupancy(perc)'] = zondag[dagst.hour]
+    if dagtype(dagst) == 1:
+        df.loc[index, 'occupancy(perc)'] = werkdag[dagst.hour]
+    elif dagtype(dagst) == 2:
+        df.loc[index, 'occupancy(perc)'] = zaterdag[dagst.hour]
+    else:
+        df.loc[index, 'occupancy(perc)'] = zondag[dagst.hour]
 
 print(df)
 

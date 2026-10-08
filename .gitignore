@@ -81,3 +81,6 @@ desktop.ini
 *.env
 *.secret
 *.key
+
+# Local development files
+docs/ghx_*

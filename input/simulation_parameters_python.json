@@ -1,0 +1,38 @@
+{
+  "occupancy": {
+    "occupancy_mean__p": 3000
+  },
+  "solar_chimney": {
+    "weather_location__degN": 52.37,
+    "weather_location__degE": 5.22,
+    "solar_chimney_height__m": 30,
+    "solar_chimney_segments__0": 15,
+    "solar_chimney_width__m": 6.0,
+    "solar_chimney_depth__m": 2.0,
+    "solar_chimney_azimuth__degN": 180.0,
+    "glazing_transmittance__0": 0.7,
+    "glazing__pct": 80,
+    "solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1": 1.65
+  },
+  "ventec_roof": {
+    "venturi_ejector_height__m": 50,
+    "venturi_throat_height__m": 1.0,
+    "venturi_ejector_opening__m2": 25.0
+  },
+  "over_pressure_room": {
+    "wind_overpressure_inflow_height__m": 50.0
+  },
+  "climate_cascade": {
+    "height_cascade__m": 15.0,
+    "cascade_width__m": 4.0,
+    "cascade_depth__m": 4.0,
+    "cascade_segments__0": 20,
+    "temp_water_cascade_in__degC": 13.0,
+    "temp_air_in_threshold__degC": 16.0,
+    "temp_air_cascade_out_set__degC": 18.0,
+    "humidity_abs_set__g_kg_1": 6.0,
+    "nozzles_min__0": 2,
+    "nozzles_max__0": 60,
+    "loss_cascade_water_nozzle__Pa": 90000.0
+  }
+}

@@ -1,7 +1,3 @@
-# venv: ewf-tech
-
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
-
 """
 Logging configuratie module voor EWF Tech Simulator.
 
@@ -12,7 +8,6 @@ formattering en log level configuratie.
 
 import logging
 import os
-from datetime import datetime
 from typing import Optional
 
 
@@ -32,7 +27,9 @@ class EWFLogger:
         self.logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
         
         # Verwijder bestaande handlers
-        self.logger.handlers.clear()
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+            handler.close()
         
         # Formattering
         formatter = logging.Formatter(
@@ -47,7 +44,8 @@ class EWFLogger:
         
         # File handler (optioneel)
         if log_file:
-            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            if os.path.dirname(log_file):
+                os.makedirs(os.path.dirname(log_file), exist_ok=True)
             file_handler = logging.FileHandler(log_file)
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
