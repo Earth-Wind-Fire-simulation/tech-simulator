@@ -13,12 +13,13 @@ import platform
 import sys
 import warnings
 from collections import Counter
+from collections.abc import Sequence
 from contextlib import redirect_stdout
 from datetime import date, datetime
 from importlib import metadata
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT / "src") not in sys.path:
@@ -169,7 +170,7 @@ def run_simulation(
         "executable": sys.executable,
         "platform": platform.platform(),
         "packages": {package: package_version(package) for package in (
-            "numpy", "pandas", "scipy", "astral", "pytz", "openpyxl", "python-dateutil"
+            "numpy", "pandas", "scipy", "astral", "pytz", "openpyxl", "python-dateutil", "pydantic"
         )},
         "sha256": before,
         "parameters": parameters,

@@ -6,10 +6,7 @@ voor de overdrukkamer in het EWF systeem. Omvat windcorrectie
 en drukberekeningen.
 """
 
-from numbers import Real
-
 import numpy as np
-import pandas as pd
 
 from ewf_utils import (
     air_20C__kg_m_3,
@@ -18,7 +15,7 @@ from ewf_utils import (
     wind_local_displacement_height__m,
     wind_local_roughness_length__m,
 )
-from exceptions import create_configuration_error, create_data_validation_error
+from schemas import OverpressureFrame, OverpressureParams
 
 # Vaste codewaarden
 wind_overpressure_inflow_threshold__m_s_1 = 2.5  # Drempel windsnelheid uit vergelijking
@@ -36,20 +33,9 @@ def calculate_overpressure_room(df, wind_overpressure_inflow_height__m=17.0):
         Kopie met temp_overpressure_in__degC, temp_overpressure_out__degC,
         wind_overpressure_inflow__m_s_1 en overpressure_room_delta__Pa.
     """
-    if not isinstance(df, pd.DataFrame) or df.empty or not df.columns.is_unique or not df.index.is_unique:
-        raise create_data_validation_error('df', 'niet-lege DataFrame met unieke kolommen en index')
-    for column in ['wind__m_s_1', 'temp_outdoor__degC']:
-        if column not in df or not pd.api.types.is_numeric_dtype(df[column]):
-            raise create_data_validation_error(column, 'numerieke kolom')
-        if df[column].isna().any() or not np.isfinite(df[column].to_numpy(dtype=float)).all():
-            raise create_data_validation_error(column, 'eindige waarden')
-    if (df['wind__m_s_1'] < 0).any():
-        raise create_data_validation_error('wind__m_s_1', 'niet-negatieve windsnelheid')
-    if (isinstance(wind_overpressure_inflow_height__m, bool) or not isinstance(wind_overpressure_inflow_height__m, Real)
-            or not np.isfinite(wind_overpressure_inflow_height__m)
-            or wind_overpressure_inflow_height__m <= wind_local_displacement_height__m + wind_local_roughness_length__m):
-        raise create_configuration_error('wind_overpressure_inflow_height__m',
-                                         'boven verplaatsingshoogte plus ruwheidslengte', wind_overpressure_inflow_height__m)
+    params = OverpressureParams(wind_overpressure_inflow_height__m=wind_overpressure_inflow_height__m)
+    OverpressureFrame(df=df)
+    wind_overpressure_inflow_height__m = params.wind_overpressure_inflow_height__m
     
     # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()

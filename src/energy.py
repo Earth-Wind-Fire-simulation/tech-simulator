@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ewf_utils import Wh_kWh_1, min_h_1
-from exceptions import create_data_validation_error
+from schemas import EnergyFrame, FiniteResults
 
 
 def calculate_energy(df):
@@ -30,13 +30,7 @@ def calculate_energy(df):
     Raises:
         ValueError: Als input DataFrame None is.
     """
-    if not isinstance(df, pd.DataFrame) or df.empty or not df.columns.is_unique or not df.index.is_unique:
-        raise create_data_validation_error('df', 'niet-lege DataFrame met unieke kolommen en index')
-
-    if isinstance(df.index, pd.DatetimeIndex) and len(df) > 1:
-        if not df.index.to_series().diff().iloc[1:].eq(pd.Timedelta(hours=1)).all():
-            raise create_data_validation_error('df.index', 'opeenvolgende uurwaarden')
-
+    EnergyFrame(df=df)
     df = df.copy()
 
     # Bereken totale electriciteit
@@ -58,17 +52,9 @@ def calculate_energy(df):
     if 'e_fan_heat_recovery__W' in available_cols:
         e_cols.append(df['e_fan_heat_recovery__W'])
 
-    if not e_cols:
-        raise create_data_validation_error('df', 'minstens een bekende electriciteitskolom in W')
-    for column in e_cols:
-        if (not pd.api.types.is_numeric_dtype(column) or column.isna().any()
-                or not np.isfinite(column.to_numpy(dtype=float)).all() or (column < 0).any()):
-            raise create_data_validation_error(column.name, 'eindig niet-negatief vermogen in W')
-    
     # Tel alle beschikbare electriciteitskolommen
     df['e__ewf_total__W'] = sum(e_cols, start=pd.Series(0.0, index=df.index))
-    if not np.isfinite(df['e__ewf_total__W']).all():
-        raise create_data_validation_error('e__ewf_total__W', 'eindig totaalvermogen in W')
+    FiniteResults(values=tuple(df['e__ewf_total__W'].to_numpy(dtype=float)))
 
     interval_min = min_h_1
 
@@ -77,7 +63,6 @@ def calculate_energy(df):
     # Bereken gemiddeld vermogen en totale energie
     e_ewf_total_mean__W = df['e__ewf_total__W'].mean()
     e_ewf_total_sum__kWh = e_ewf_total_mean__W * e_ewf_total__h / Wh_kWh_1
-    if not np.isfinite(e_ewf_total_sum__kWh):
-        raise create_data_validation_error('e_ewf_total_sum__kWh', 'eindige energie in kWh')
+    FiniteResults(values=(float(e_ewf_total_sum__kWh),))
 
     return df, e_ewf_total_mean__W, e_ewf_total_sum__kWh

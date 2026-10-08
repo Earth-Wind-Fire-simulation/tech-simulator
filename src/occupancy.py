@@ -7,8 +7,6 @@ en bestandsbeschermingsmechanismen.
 """
 
 from datetime import datetime
-from numbers import Real
-
 import numpy as np
 import pandas as pd
 
@@ -20,7 +18,7 @@ from ewf_utils import (
     fan_modulation_depth__0,
     flow_modulation_depth__0,
 )
-from exceptions import create_configuration_error, create_data_validation_error
+from schemas import OccupancyFile, OccupancyFrame, OccupancyParams
 from weather import safe_read_csv
 
 
@@ -47,45 +45,18 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
         ProcessingError: Als bezettingsberekening faalt.
         DataValidationError: Als input data ongeldig is.
     """
-    if not isinstance(df, pd.DataFrame) or df.empty or not df.columns.is_unique or not df.index.is_unique:
-        raise create_data_validation_error('df', 'niet-lege DataFrame met unieke kolommen en index')
-    if isinstance(jaar, bool) or not isinstance(jaar, Real) or not np.isfinite(jaar) or int(jaar) != jaar:
-        raise create_configuration_error('jaar', 'geheel kalenderjaar', jaar)
-    jaar = int(jaar)
-    try:
-        start = datetime(jaar, 1, 1, 0)
-        pd.Timestamp(start)
-    except (ValueError, OverflowError) as error:
-        raise create_configuration_error('jaar', 'kalenderjaar binnen het datumbereik van pandas', jaar) from error
-    if (isinstance(occupancy_mean__p, bool) or not isinstance(occupancy_mean__p, Real)
-            or not np.isfinite(occupancy_mean__p) or occupancy_mean__p <= 0):
-        raise create_configuration_error('occupancy_mean__p', 'eindig en groter dan nul', occupancy_mean__p)
+    params = OccupancyParams(jaar=jaar, occupancy_mean__p=occupancy_mean__p)
+    OccupancyFrame(df=df)
+    jaar = params.jaar
+    occupancy_mean__p = params.occupancy_mean__p
+    start = datetime(jaar, 1, 1, 0)
     df = df.copy()
     df_occ = safe_read_csv(pad, decimal=',')
     if 'occupancyperc' not in df_occ and 'occupancy(perc)' in df_occ:
         df_occ['occupancyperc'] = df_occ['occupancy(perc)']
-    
-    # Controleer vereiste kolom
-    if 'occupancyperc' not in df_occ.columns:
-        raise create_data_validation_error(
-            column='occupancyperc',
-            expected_type='numeric column',
-            actual_value=None
-        )
-
-    # Bereken het juiste aantal uren op basis van data lengte
-    data_uren = len(df)
-    occupancy_uren = len(df_occ)
-    if data_uren != occupancy_uren:
-        raise create_data_validation_error('occupancyperc', 'evenveel uren als weerdata',
-                                           actual_value=occupancy_uren,
-                                           custom_message=f'Bezetting heeft {occupancy_uren} uren, weerdata {data_uren}.')
-    target_uren = data_uren
-    if (not pd.api.types.is_numeric_dtype(df_occ['occupancyperc'])
-            or df_occ['occupancyperc'].isna().any() or not df_occ['occupancyperc'].between(0, 100).all()):
-        raise create_data_validation_error('occupancyperc', 'bezetting tussen 0 en 100 procent')
-    if 'occupancy(perc)' in df_occ and not df_occ['occupancyperc'].equals(df_occ['occupancy(perc)']):
-        raise create_data_validation_error('occupancyperc', 'gelijke waarden voor beide bezettingskolommen')
+    occupancy_file = OccupancyFile(df=df_occ, target_hours=len(df), year=jaar)
+    df_occ = occupancy_file.df
+    target_uren = len(df)
     df['occupancy__perc'] = df_occ['occupancyperc'].to_numpy()
     #Tijd met tijdzone. Gebruikt voor berekening van zonnestand
     #df['tijd met tijdzone'] = df_occ['date and time']
@@ -107,19 +78,7 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
 
     
     # Creëer tijd range met juiste lengte
-    try:
-        tijd_range = pd.date_range(start, periods=target_uren, freq='h', tz='Europe/Amsterdam')
-    except (ValueError, OverflowError) as error:
-        raise create_data_validation_error('df', 'periode binnen het datumbereik van pandas') from error
-    if tijd_range[-1].year != jaar:
-        raise create_data_validation_error('df', 'hoogstens een kalenderjaar aan uurwaarden')
-    if 'date and time' in df_occ:
-        try:
-            supplied_time = pd.to_datetime(df_occ['date and time'], utc=True, errors='raise')
-        except (ValueError, TypeError) as error:
-            raise create_data_validation_error('date and time', 'geldige tijdstippen met tijdzone') from error
-        if not np.array_equal(supplied_time.array.asi8, tijd_range.tz_convert('UTC').asi8):
-            raise create_data_validation_error('date and time', 'opeenvolgende uren vanaf 1 januari van het gekozen jaar')
+    tijd_range = pd.date_range(start, periods=target_uren, freq='h', tz='Europe/Amsterdam')
     
     # Voeg tijd kolom toe
     df['tijd met tijdzone'] = tijd_range

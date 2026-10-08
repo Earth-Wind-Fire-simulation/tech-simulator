@@ -6,8 +6,6 @@ voor het ventec dak systeem in het EWF systeem. Omvat windcorrectie
 en Venturi-effect berekeningen.
 """
 
-from numbers import Real
-
 import numpy as np
 import pandas as pd
 
@@ -18,7 +16,7 @@ from ewf_utils import (
     wind_local_displacement_height__m,
     wind_local_roughness_length__m,
 )
-from exceptions import create_configuration_error, create_data_validation_error
+from schemas import FiniteOutputFrame, VentecFrame, VentecParams
 
 # Vaste codewaarden
 #venturi_wind_acceleration__0 = 1.25
@@ -48,28 +46,15 @@ def calculate_ventec_roof(df,
         Zonder luchtdebiet zijn coefficient, trek en ventilatorwaarden nul:
         een inactieve bedrijfsstand, geen voorspelling van statische dakdruk.
     """
-    if not isinstance(df, pd.DataFrame) or df.empty or not df.columns.is_unique or not df.index.is_unique:
-        raise create_data_validation_error('df', 'niet-lege DataFrame met unieke kolommen en index')
-    required_columns = ['wind__m_s_1', 'air_flow_office__m3_s_1', 'eta_fan__W0',
-                        'chimney_delta__Pa', 'outdoor_chimney_delta__Pa', 'shunt_delta__Pa']
-    for column in required_columns:
-        if column not in df or not pd.api.types.is_numeric_dtype(df[column]):
-            raise create_data_validation_error(column, 'numerieke kolom')
-        if df[column].isna().any() or not np.isfinite(df[column].to_numpy(dtype=float)).all():
-            raise create_data_validation_error(column, 'eindige waarden')
-    for column in ['wind__m_s_1', 'air_flow_office__m3_s_1']:
-        if (df[column] < 0).any():
-            raise create_data_validation_error(column, 'niet-negatieve waarden')
-    if ((df['eta_fan__W0'] <= 0) | (df['eta_fan__W0'] > 1)).any():
-        raise create_data_validation_error('eta_fan__W0', '0 < rendement <= 1')
-    for parameter, value in {'venturi_ejector_height__m': venturi_ejector_height__m,
-                             'venturi_ejector_opening__m2': venturi_ejector_opening__m2}.items():
-        if isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value) or value <= 0:
-            raise create_configuration_error(parameter, 'eindig en groter dan nul', value)
-    if venturi_ejector_height__m <= wind_local_displacement_height__m + wind_local_roughness_length__m:
-        raise create_configuration_error('venturi_ejector_height__m', 'boven verplaatsingshoogte plus ruwheidslengte', venturi_ejector_height__m)
-    if isinstance(venturi_throat_height__m, bool) or venturi_throat_height__m not in (1, 2):
-        raise create_configuration_error('venturi_throat_height__m', '1 of 2 m', venturi_throat_height__m)
+    params = VentecParams(
+        venturi_ejector_height__m=venturi_ejector_height__m,
+        venturi_throat_height__m=venturi_throat_height__m,
+        venturi_ejector_opening__m2=venturi_ejector_opening__m2,
+    )
+    VentecFrame(df=df)
+    venturi_ejector_height__m = params.venturi_ejector_height__m
+    venturi_throat_height__m = params.venturi_throat_height__m
+    venturi_ejector_opening__m2 = params.venturi_ejector_opening__m2
 
     df = df.copy()
 
@@ -107,7 +92,6 @@ def calculate_ventec_roof(df,
     #                    (fan_max__m3_s_1 - fan_min__m3_s_1) * (eta_fan_max__W0 - eta_fan_min__W0))
     #Multiply pressure with volume flow.
     df['e_fan_exh__W'] = df['exhaust_fan__Pa'] * df['air_flow_office__m3_s_1'] / df['eta_fan__W0']
-    if not np.isfinite(df[['venturi_draft__Pa', 'exhaust_fan__Pa', 'e_fan_exh__W']].to_numpy()).all():
-        raise create_data_validation_error('ventec outputs', 'eindige drukken en vermogens')
+    FiniteOutputFrame(df=df, columns=('venturi_draft__Pa', 'exhaust_fan__Pa', 'e_fan_exh__W'))
 
     return df

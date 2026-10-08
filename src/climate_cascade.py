@@ -6,8 +6,6 @@ met watersproei-nozzles. Omvat complexe thermodynamische berekeningen
 en foutafhandeling.
 """
 
-from numbers import Real
-
 import numpy as np
 import pandas as pd
 
@@ -24,10 +22,9 @@ from ewf_utils import (
     water__kg_m_3,
 )
 from exceptions import (
-    create_configuration_error,
-    create_data_validation_error,
     create_processing_error,
 )
+from schemas import CascadeFrame, CascadeParams
 
 # Fixed values
 nozzle__kg_s_1 = 0.7
@@ -151,88 +148,32 @@ def calculate_climate_cascade(df: pd.DataFrame,
             negative vapour mass, depleted droplets or nonpositive kelvin.
             Such a trial is not used to select the number of nozzles.
     """
-    if not isinstance(df, pd.DataFrame):
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame',
-            actual_value=None,
-            custom_message='Input DataFrame is vereist voor klimaatcascade berekening.'
-        )
-
-    if df.empty:
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame (non-empty)',
-            actual_value='empty DataFrame',
-            custom_message='Input DataFrame is leeg - geen data om te verwerken.'
-        )
-    if not df.columns.is_unique or not df.index.is_unique:
-        raise create_data_validation_error('df', 'unieke kolommen en index')
-    # Kopie voorkomt mutatieproblemen in Grasshopper
+    params = CascadeParams(
+        height_cascade__m=height_cascade__m,
+        cascade_width__m=cascade_width__m,
+        cascade_depth__m=cascade_depth__m,
+        cascade_segments__0=cascade_segments__0,
+        temp_water_cascade_in__degC=temp_water_cascade_in__degC,
+        temp_air_in_threshold__degC=temp_air_in_threshold__degC,
+        temp_air_cascade_out_set__degC=temp_air_cascade_out_set__degC,
+        humidity_abs_set__g_kg_1=humidity_abs_set__g_kg_1,
+        nozzles_min__0=nozzles_min__0,
+        nozzles_max__0=nozzles_max__0,
+        loss_cascade_water_nozzle__Pa=loss_cascade_water_nozzle__Pa,
+    )
+    CascadeFrame(df=df)
     df = df.copy()
-
-    # Valideer vereiste kolommen
-    required_columns = [
-        'temp_overpressure_out__degC',
-        'temp_air_heat_recovery_in__degC',
-        'air_flow_office__m3_s_1',
-        'humidity_outdoor_rel__0',
-        'temp_outdoor__degC',
-        'overpressure_room_delta__Pa',
-        'eta_fan__W0'
-    ]
-
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame met vereiste kolommen',
-            actual_value=None,
-            custom_message=f'Input DataFrame mist vereiste kolommen voor klimaatcascade berekening: {missing_columns}. '
-                           f'Beschikbare kolommen: {list(df.columns)}'
-        )
-
-    for column in required_columns:
-        if (not pd.api.types.is_numeric_dtype(df[column]) or df[column].isna().any()
-                or not np.isfinite(df[column].to_numpy(dtype=float)).all()):
-            raise create_data_validation_error(column, 'eindige numerieke waarden')
-    if (df['air_flow_office__m3_s_1'] < 0).any():
-        raise create_data_validation_error('air_flow_office__m3_s_1', 'niet-negatieve luchtstroom')
-    if not df['humidity_outdoor_rel__0'].between(0, 1).all():
-        raise create_data_validation_error('humidity_outdoor_rel__0', 'fractie 0..1')
-    if ((df['eta_fan__W0'] <= 0) | (df['eta_fan__W0'] > 1)).any():
-        raise create_data_validation_error('eta_fan__W0', '0 < rendement <= 1')
-    for column in ['temp_overpressure_out__degC', 'temp_air_heat_recovery_in__degC', 'temp_outdoor__degC']:
-        if (df[column] <= -temp_0_degC__K).any():
-            raise create_data_validation_error(column, 'temperatuur boven het absolute nulpunt')
-    if (df['temp_outdoor__degC'] == -c_3_vap__degC).any():
-        raise create_data_validation_error('temp_outdoor__degC', 'geen singulariteit in dampdrukformule')
-    for parameter, value in {'height_cascade__m': height_cascade__m,
-                             'cascade_width__m': cascade_width__m,
-                             'cascade_depth__m': cascade_depth__m}.items():
-        if isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value) or value <= 0:
-            raise create_configuration_error(parameter, 'eindig en groter dan nul', value)
-    for parameter, value in {'cascade_segments__0': cascade_segments__0,
-                             'nozzles_min__0': nozzles_min__0, 'nozzles_max__0': nozzles_max__0}.items():
-        if (isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value)
-                or value < 0 or int(value) != value):
-            raise create_configuration_error(parameter, 'niet-negatief geheel getal', value)
-    if cascade_segments__0 == 0 or nozzles_min__0 > nozzles_max__0:
-        raise create_configuration_error('cascade_segments__0/nozzles', 'segmenten > 0 en minimum <= maximum')
-    cascade_segments__0 = int(cascade_segments__0)
-    nozzles_min__0 = int(nozzles_min__0)
-    nozzles_max__0 = int(nozzles_max__0)
-    for parameter, value in {'temp_water_cascade_in__degC': temp_water_cascade_in__degC,
-                             'temp_air_in_threshold__degC': temp_air_in_threshold__degC,
-                             'temp_air_cascade_out_set__degC': temp_air_cascade_out_set__degC,
-                             'humidity_abs_set__g_kg_1': humidity_abs_set__g_kg_1,
-                             'loss_cascade_water_nozzle__Pa': loss_cascade_water_nozzle__Pa}.items():
-        if isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value):
-            raise create_configuration_error(parameter, 'eindige numerieke waarde', value)
-    if min(temp_water_cascade_in__degC, temp_air_in_threshold__degC, temp_air_cascade_out_set__degC) <= -temp_0_degC__K:
-        raise create_configuration_error('temperature', 'boven het absolute nulpunt')
-    if temp_water_cascade_in__degC == -c_3_vap__degC or min(humidity_abs_set__g_kg_1, loss_cascade_water_nozzle__Pa) < 0:
-        raise create_configuration_error('cascade setpoints', 'niet-negatieve vochtigheid/druk en geldige dampdruktemperatuur')
+    height_cascade__m = params.height_cascade__m
+    cascade_width__m = params.cascade_width__m
+    cascade_depth__m = params.cascade_depth__m
+    cascade_segments__0 = params.cascade_segments__0
+    temp_water_cascade_in__degC = params.temp_water_cascade_in__degC
+    temp_air_in_threshold__degC = params.temp_air_in_threshold__degC
+    temp_air_cascade_out_set__degC = params.temp_air_cascade_out_set__degC
+    humidity_abs_set__g_kg_1 = params.humidity_abs_set__g_kg_1
+    nozzles_min__0 = params.nozzles_min__0
+    nozzles_max__0 = params.nozzles_max__0
+    loss_cascade_water_nozzle__Pa = params.loss_cascade_water_nozzle__Pa
 
 # Pre-calculate cascade geometry
     cascade_segment_height__m = height_cascade__m / cascade_segments__0

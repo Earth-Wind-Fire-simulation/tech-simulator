@@ -6,10 +6,7 @@ voor de zonnekachel in het EWF systeem. Omvat complexe thermodynamische
 berekeningen en warmtestraling.
 """
 
-from numbers import Real
-
 import numpy as np
-import pandas as pd
 from astral.location import Location, LocationInfo
 from scipy.optimize import fsolve
 
@@ -23,10 +20,9 @@ from ewf_utils import (
     temp_air_office_out__degC,
 )
 from exceptions import (
-    create_configuration_error,
-    create_data_validation_error,
     create_processing_error,
 )
+from schemas import SolarChimneyFrame, SolarChimneyParams
 
 # Codewaarden
 solar_chimney_tilt__degV = 0
@@ -106,43 +102,29 @@ def calculate_solar_chimney(df,
             residual exceeds 0.001 W plus one millionth of the segment load.
             This is a numerical screening limit, not an accuracy certificate.
     """
-    if not isinstance(df, pd.DataFrame) or df.empty or not df.columns.is_unique or not df.index.is_unique:
-        raise create_data_validation_error('df', 'niet-lege DataFrame met unieke kolommen en index')
-    for column in ['temp_outdoor__degC', 'air_flow_office__m3_s_1', 'sol_ghi__W_m_2']:
-        if column not in df or not pd.api.types.is_numeric_dtype(df[column]):
-            raise create_data_validation_error(column, 'numerieke kolom')
-        if df[column].isna().any() or not np.isfinite(df[column].to_numpy(dtype=float)).all():
-            raise create_data_validation_error(column, 'eindige waarden')
-    if (df[['air_flow_office__m3_s_1', 'sol_ghi__W_m_2']] < 0).any().any():
-        raise create_data_validation_error('airflow/irradiance', 'niet-negatieve waarden')
-    if (df['temp_outdoor__degC'] <= -temp_0_degC__K).any():
-        raise create_data_validation_error('temp_outdoor__degC', 'boven het absolute nulpunt')
-    if 'tijd met tijdzone' not in df or df['tijd met tijdzone'].isna().any():
-        raise create_data_validation_error('tijd met tijdzone', 'tijdstippen met tijdzone')
-    for timestamp in df['tijd met tijdzone']:
-        if not hasattr(timestamp, 'utcoffset') or timestamp.utcoffset() is None:
-            raise create_data_validation_error('tijd met tijdzone', 'datetime met expliciete tijdzone')
-    if (isinstance(solar_chimney_segments__0, bool) or not isinstance(solar_chimney_segments__0, Real)
-            or not np.isfinite(solar_chimney_segments__0) or solar_chimney_segments__0 <= 0
-            or int(solar_chimney_segments__0) != solar_chimney_segments__0):
-        raise create_configuration_error('solar_chimney_segments__0', 'positief geheel getal', solar_chimney_segments__0)
-    solar_chimney_segments__0 = int(solar_chimney_segments__0)
-    for parameter, value in {'solar_chimney_height__m': solar_chimney_height__m,
-                             'solar_chimney_width__m': solar_chimney_width__m,
-                             'solar_chimney_depth__m': solar_chimney_depth__m,
-                             'solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1': solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1}.items():
-        if isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value) or value <= 0:
-            raise create_configuration_error(parameter, 'eindig en groter dan nul', value)
-    for parameter, value, lower, upper in [
-        ('weather_location__degN', weather_location__degN, -90, 90),
-        ('weather_location__degE', weather_location__degE, -180, 180),
-        ('glazing_transmittance__0', glazing_transmittance__0, 0, 1),
-        ('glazing__pct', glazing__pct, 0, 100),
-    ]:
-        if isinstance(value, bool) or not isinstance(value, Real) or not np.isfinite(value) or not lower <= value <= upper:
-            raise create_configuration_error(parameter, f'{lower}..{upper}', value)
-    if not isinstance(solar_chimney_azimuth__degN, Real) or not np.isfinite(solar_chimney_azimuth__degN):
-        raise create_configuration_error('solar_chimney_azimuth__degN', 'eindige hoek', solar_chimney_azimuth__degN)
+    params = SolarChimneyParams(
+        weather_location__degN=weather_location__degN,
+        weather_location__degE=weather_location__degE,
+        solar_chimney_height__m=solar_chimney_height__m,
+        solar_chimney_segments__0=solar_chimney_segments__0,
+        solar_chimney_width__m=solar_chimney_width__m,
+        solar_chimney_depth__m=solar_chimney_depth__m,
+        solar_chimney_azimuth__degN=solar_chimney_azimuth__degN,
+        glazing_transmittance__0=glazing_transmittance__0,
+        glazing__pct=glazing__pct,
+        solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1=solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1,
+    )
+    SolarChimneyFrame(df=df)
+    weather_location__degN = params.weather_location__degN
+    weather_location__degE = params.weather_location__degE
+    solar_chimney_height__m = params.solar_chimney_height__m
+    solar_chimney_segments__0 = params.solar_chimney_segments__0
+    solar_chimney_width__m = params.solar_chimney_width__m
+    solar_chimney_depth__m = params.solar_chimney_depth__m
+    solar_chimney_azimuth__degN = params.solar_chimney_azimuth__degN
+    glazing_transmittance__0 = params.glazing_transmittance__0
+    glazing__pct = params.glazing__pct
+    solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1 = params.solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1
     
     # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()
@@ -153,7 +135,7 @@ def calculate_solar_chimney(df,
     solar_chimney_segments__0=int(solar_chimney_segments__0)
    
     # deze print is voor debugging
-    print('aantal segmenten',solar_chimney_segments__0) 
+    #print('aantal segmenten',solar_chimney_segments__0) 
 
     tb = df['tijd met tijdzone']
     tbstr = ['']*len(tb)
@@ -220,17 +202,17 @@ def calculate_solar_chimney(df,
         air_flow_office__m3_s_1 = air_flow_office_m3_s_1_series.iloc[interval]
         air_in_temp__degC = temp_air_office_out__degC
 
-        initial_guess = [40, 50, 22]  # [wall_temp, glass_temp, air_temp] in °C
+        initial_guesses = ([40, 50, 22],)  # [wall_temp, glass_temp, air_temp] in °C
         for segment in range(solar_chimney_segments__0):
             # Probeer eerst de initiële schatting, en als dat faalt, gebruik de retry-guess met
             # wall_temp = gemiddelde van binnen- en buitentemperatuur, glass_temp = buitentemperatuur, air_temp = inlaat temperatuur
             # dit werkt beter op koude nachten. Optie is om de initial guess aan te passen op basis van de buitentemperatuur.
             retry_guess = [(air_in_temp__degC + temp_outdoor__K - temp_0_degC__K) / 2,
                            temp_outdoor__K - temp_0_degC__K, air_in_temp__degC]
-            for initial_guess in (initial_guess, retry_guess):
+            for guess in initial_guesses + (retry_guess,):
                 solution, solver_info, solver_status, solver_message = fsolve(
                     segment_equations,
-                    initial_guess,
+                    guess,
                     args=(air_in_temp__degC, temp_outdoor__K - temp_0_degC__K, air_flow_office__m3_s_1,
                           solar_chimney_width__m, solar_chimney_depth__m, glazing_fraction__0, segment_height__m,
                           solar_chimney_cross_section__m2, glazing_transmittance__0,
@@ -255,7 +237,6 @@ def calculate_solar_chimney(df,
                 )
             wall_temps[interval, segment], glass_temps[interval, segment], air_temps[interval, segment] = solution
             air_in_temp__degC = air_temps[interval, segment]
-            initial_guess = solution
 
         temp_air_chimney_out__degC[interval] = air_temps[interval, -1]
         temp_air_chimney_average__degC[interval] = (temp_air_office_out__degC + temp_air_chimney_out__degC[interval]) / 2

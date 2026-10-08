@@ -12,14 +12,15 @@ import tempfile
 
 import numpy as np
 import pandas as pd
+from pydantic import ValidationError
 
 from exceptions import (
     EWFException,
-    create_data_validation_error,
     create_file_not_found_error,
     create_permission_error,
     create_processing_error,
 )
+from schemas import KnmiFrame, WeatherPath
 
 
 def safe_read_csv(pad: str, decimal: str = '.') -> pd.DataFrame:
@@ -38,14 +39,7 @@ def safe_read_csv(pad: str, decimal: str = '.') -> pd.DataFrame:
         ProcessingError: Als het bestand corrupt is.
     """
     
-    # 1. Controleer input
-    if not isinstance(pad, (str, os.PathLike)) or not os.fspath(pad).strip() or os.fspath(pad) == "<null>":
-        raise create_data_validation_error(
-            column='pad',
-            expected_type='str (non-empty)',
-            actual_value=pad,
-            custom_message='Geen geldig bestandspad ontvangen voor weergegevens.'
-        )
+    WeatherPath(path=pad)
     
     try:
         with tempfile.TemporaryDirectory(prefix='ewf-csv-') as temp_dir:
@@ -88,15 +82,7 @@ def retrieve_weather_data(pad: str) -> pd.DataFrame:
     """
     try:
         df = safe_read_csv(pad)
-        if df.empty:
-            raise create_data_validation_error('df', 'niet-lege weerdata')
-        for column in ['FH', 'T', 'Q', 'P', 'U']:
-            if column not in df or not pd.api.types.is_numeric_dtype(df[column]):
-                raise create_data_validation_error(column, 'numerieke KNMI-kolom')
-            if df[column].isna().any() or not np.isfinite(df[column].to_numpy(dtype=float)).all():
-                raise create_data_validation_error(column, 'eindige KNMI-waarden')
-        if (df[['FH', 'Q']] < 0).any().any() or (df['P'] <= 0).any() or not df['U'].between(0, 100).all():
-            raise create_data_validation_error('FH/Q/P/U', 'wind en straling >= 0, druk > 0, vochtigheid 0..100')
+        KnmiFrame(df=df)
         
         # Haal relevante kolommen uit dataframe
         wind = df['FH']
@@ -124,6 +110,8 @@ def retrieve_weather_data(pad: str) -> pd.DataFrame:
         return df_weather
         
     except EWFException:
+        raise
+    except ValidationError:
         raise
     except (ValueError, TypeError, KeyError, ArithmeticError) as e:
         raise create_processing_error(
