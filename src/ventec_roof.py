@@ -7,7 +7,6 @@ en Venturi-effect berekeningen.
 """
 
 import numpy as np
-import pandas as pd
 
 from ewf_utils import (
     air_20C__kg_m_3,

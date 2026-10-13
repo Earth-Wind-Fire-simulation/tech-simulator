@@ -1,16 +1,24 @@
 """Pydantic models for simulator inputs and configuration."""
 
+from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
 from inspect import signature
 from math import isfinite
 from numbers import Real
 from os import PathLike
-from typing import Annotated, Any, Callable, ClassVar
+from typing import Annotated, Any, ClassVar
 
 import numpy as np
 import pandas as pd
-from pydantic import BeforeValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 ABSOLUTE_ZERO_C = -273.15
 VAPOUR_PRESSURE_SINGULARITY_C = -235.0

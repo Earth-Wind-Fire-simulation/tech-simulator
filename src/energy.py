@@ -5,7 +5,6 @@ Deze module berekent totale electriciteitsverbruik en afgeleide statistieken
 op basis van inputdata van diverse systemcomponenten. Incl. foutafhandeling.
 """
 
-import numpy as np
 import pandas as pd
 
 from ewf_utils import Wh_kWh_1, min_h_1
