@@ -112,10 +112,10 @@ This creates a local virtual environment, installs dependencies, and runs the fi
 
 ### Parameters and outputs
 
-[input/simulation_parameters.json](input/simulation_parameters.json) lists the example parameters in component groups, using the same names and unit suffixes as the Python functions. Edit values for a different building; parameters omitted from a configuration retain their example defaults. Unknown names are rejected so a spelling mistake cannot silently change the intended run.
+[input/simulation_parameters_python.json](input/simulation_parameters_python.json) lists the example parameters in component groups, using the same names and unit suffixes as the Python functions. Edit values for a different building; parameters omitted from a configuration retain their example defaults. Unknown names are rejected so a spelling mistake cannot silently change the intended run.
 
 ```powershell
-.\.venv\Scripts\python.exe ewf_tech_simulator.py --config examples/simulation_parameters.json --full-year --xlsx data
+.\.venv\Scripts\python.exe ewf_tech_simulator.py --config input/simulation_parameters_python.json --full-year --xlsx data
 ```
 
 - `--xlsx [FOLDER]` writes `<YYYY-MM-DDTHHMM>-ewf-sim-data_total.xlsx` into an existing folder (default `data`), with sheets `Info`, `Inputdata` and `Outputdata`. `--auteur`, `--organisatie`, `--project`, `--omschrijving`, `--site` and `--gebouw` fill the `Info` sheet.
@@ -133,7 +133,7 @@ The runner can also be imported from Python:
 ```python
 from ewf_tech_simulator import load_parameters, run_simulation
 
-parameters = load_parameters("examples/simulation_parameters.json")
+parameters = load_parameters("input/simulation_parameters_python.json")
 frame, mean_W, total_kWh = run_simulation(
   "input/WeerData/De Bilt 2025.csv",
   "input/Occupancy Data/Occ2025vac27to32and52.csv",
