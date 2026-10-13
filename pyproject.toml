@@ -1,0 +1,74 @@
+[project]
+name = "ewf-tech-simulator"
+version = "0.1.0"
+description = "Modular simulation of the Earth, Wind & Fire (EWF) ventilation system for Rhino 8 / Grasshopper."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+# Rhino 8 embeds Python 3.9.
+requires-python = ">=3.9"
+authors = [
+    { name = "Oscar Somsen" },
+    { name = "Wiechert Eschbach" },
+    { name = "Frank de Kimpe" },
+]
+keywords = ["ventilation", "building simulation", "energy transition", "Grasshopper", "Rhino"]
+# Keep in sync with requirements.txt and the '# requirements:' line in the Rhino scripts.
+dependencies = [
+    "numpy==1.24.4",
+    "pandas==1.5.3",
+    "pytz==2025.2",
+    "astral==3.2",
+    "scipy==1.13.1",
+    "openpyxl==3.1.5",
+    "pydantic==2.11.10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "ruff>=0.5",
+]
+
+[project.urls]
+Repository = "https://github.com/EWF-sim/tech-simulator"
+
+# Scripts run directly inside Rhino and modules import each other flatly, so this is not an installable package.
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src", "dev-tools"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+extend-exclude = ["dev-tools/ghx_output"]
+src = [".", "src", "dev-tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
+ignore = [
+    "E501", # line length is handled by the formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "climate_cascade",
+    "energy",
+    "ewf_utils",
+    "exceptions",
+    "logger_config",
+    "occupancy",
+    "over_pressure_room",
+    "schemas",
+    "solar_chimney",
+    "ventec_roof",
+    "weather",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests extend sys.path before importing project modules.
+"tests/*" = ["E402"]
+"ewf_tech_simulator.py" = ["E402"]

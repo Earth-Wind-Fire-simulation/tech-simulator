@@ -9,7 +9,6 @@ in de diverse modules.
 import os
 
 import numpy as np
-import pandas as pd
 
 # Conversiefactoren 
 dm3_m_3 = 1000
