@@ -18,6 +18,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "dev-tools"))
 PARAMETER_FILE = ROOT / "input" / "simulation_parameters_python.json"
 WEATHER_2025 = ROOT / "input" / "WeerData" / "De Bilt 2025.csv"
 OCCUPANCY_2025 = ROOT / "input" / "Occupancy Data" / "Occ2025vac27to32and52.csv"
@@ -27,6 +28,7 @@ import pandas as pd
 from pydantic import ValidationError
 
 import climate_cascade
+import compare_export
 import energy
 import ewf_tech_simulator
 import ewf_utils
@@ -460,15 +462,17 @@ class IntegrationChecks(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "reference.xlsx"
             frame.to_excel(path, sheet_name="Outputdata", index=False)
-            self.assertTrue(ewf_tech_simulator.compare_export(frame, path)["matches"])
+            self.assertTrue(compare_export.compare_export(frame, path)["matches"])
             frame.loc[0, "e__ewf_total__W"] = 1001.0
-            self.assertFalse(ewf_tech_simulator.compare_export(frame, path)["matches"])
+            self.assertFalse(compare_export.compare_export(frame, path)["matches"])
 
     def test_runner_repeatability_and_no_input_mutation(self):
         arguments = (ROOT / "input/WeerData/De Bilt 2025.csv", ROOT / "input/Occupancy Data/Occ2025vac27to32and52.csv", 2025)
-        first, first_report = ewf_tech_simulator.run_simulation(*arguments, hours=2)
-        second, second_report = ewf_tech_simulator.run_simulation(*arguments, hours=2)
+        first, *_ = ewf_tech_simulator.run_simulation(*arguments, hours=2)
+        second, *_ = ewf_tech_simulator.run_simulation(*arguments, hours=2)
         pd.testing.assert_frame_equal(first, second, check_exact=True)
+        _, first_report = compare_export.run_observed(*arguments, hours=2)
+        _, second_report = compare_export.run_observed(*arguments, hours=2)
         self.assertEqual(first_report["sha256"], second_report["sha256"])
         self.assertEqual(list(first_report["stages"]), [
             "weather", "occupancy", "solar_chimney", "ventec_roof",
@@ -506,16 +510,24 @@ class CommandLineChecks(unittest.TestCase):
     def test_cli_runs_from_another_directory_and_exports_results(self):
         with tempfile.TemporaryDirectory() as directory:
             csv_path = Path(directory)
-            report_path = Path(directory) / 'run.json'
             result = subprocess.run([
                 sys.executable, '-B', str(ROOT / 'ewf_tech_simulator.py'), '--hours', '2',
                 '--config', str(PARAMETER_FILE),
-                '--xlsx', str(csv_path), '--report', str(report_path),
+                '--xlsx', str(csv_path),
             ], cwd=directory, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             exported = list(csv_path.glob('*-ewf-sim-data_total.xlsx'))
             self.assertEqual(len(exported), 1)
             self.assertEqual(len(pd.read_excel(exported[0], sheet_name='Outputdata')), 2)
+
+    def test_dev_tool_runs_from_another_directory_and_writes_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / 'run.json'
+            result = subprocess.run([
+                sys.executable, '-B', str(ROOT / 'dev-tools' / 'compare_export.py'), '--hours', '2',
+                '--config', str(PARAMETER_FILE), '--report', str(report_path),
+            ], cwd=directory, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
             report = json.loads(report_path.read_text(encoding='utf-8'))
             self.assertEqual(report['stages']['energy']['rows'], 2)
             self.assertFalse(any(Path(path).suffix in ('.ghx', '.md') for path in report['sha256']))
@@ -962,31 +974,34 @@ class RunnerChecks(unittest.TestCase):
             ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=2, start_row=1_000_000)
 
     def test_start_row_selects_later_hours_with_fresh_index(self):
-        frame, report = ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=2, start_row=5)
+        frame, *_ = ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=2, start_row=5)
         self.assertEqual(frame.index.tolist(), [0, 1])
         self.assertEqual(frame["tijd met tijdzone"].iloc[0], "01-01-2025 05:00 +0100")
+        self.assertTrue(np.isfinite(frame["e__ewf_total__W"]).all())
+
+    def test_report_describes_the_selected_slice(self):
+        _, report = compare_export.run_observed(WEATHER_2025, OCCUPANCY_2025, 2025, hours=2, start_row=5)
         self.assertEqual(report["start_row"], 5)
         self.assertEqual(report["requested_hours"], 2)
         self.assertEqual(report["full_year_expected_rows"], 8760)
         self.assertEqual(report["rows_with_nonfinite_total"], 0)
-        self.assertTrue(np.isfinite(frame["e__ewf_total__W"]).all())
 
     def test_leap_year_report_expects_extra_day(self):
         weather_2024 = ROOT / "input" / "WeerData" / "De Bilt 2024.csv"
         occupancy_2024 = ROOT / "input" / "Occupancy Data" / "Occ2024vac27to32and52.csv"
-        _, report = ewf_tech_simulator.run_simulation(weather_2024, occupancy_2024, 2024, hours=1)
+        _, report = compare_export.run_observed(weather_2024, occupancy_2024, 2024, hours=1)
         self.assertEqual(report["full_year_expected_rows"], 8784)
 
     def test_custom_parameters_change_the_result(self):
         parameters = ewf_tech_simulator.example_parameters()
         parameters["occupancy"]["occupancy_mean__p"] = 6000
-        base, _ = ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=1)
-        large, _ = ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=1, parameters=parameters)
+        base, *_ = ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=1)
+        large, *_ = ewf_tech_simulator.run_simulation(WEATHER_2025, OCCUPANCY_2025, 2025, hours=1, parameters=parameters)
         self.assertGreater(large["air_flow_office__m3_s_1"].iloc[0], base["air_flow_office__m3_s_1"].iloc[0])
 
     def test_frame_summary_counts_nonfinite_values(self):
         frame = pd.DataFrame({"a": [1.0, np.nan, np.inf], "b": ["x", "y", "z"]})
-        summary = ewf_tech_simulator.frame_summary(frame)
+        summary = compare_export.frame_summary(frame)
         self.assertEqual(summary["rows"], 3)
         self.assertEqual(summary["nonfinite"], {"a": 2})
         self.assertEqual(len(summary["first_rows"]), 3)
@@ -996,22 +1011,22 @@ class RunnerChecks(unittest.TestCase):
             path = Path(directory) / "data.txt"
             path.write_bytes(b"abc")
             self.assertEqual(
-                ewf_tech_simulator.file_hash(path),
+                compare_export.file_hash(path),
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
             )
-        self.assertIsNotNone(ewf_tech_simulator.package_version("numpy"))
-        self.assertIsNone(ewf_tech_simulator.package_version("ewf-no-such-distribution"))
+        self.assertIsNotNone(compare_export.package_version("numpy"))
+        self.assertIsNone(compare_export.package_version("ewf-no-such-distribution"))
 
     def test_export_comparison_reports_column_and_length_differences(self):
         frame = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "reference.xlsx"
             frame.to_excel(path, sheet_name="Outputdata", index=False)
-            comparison = ewf_tech_simulator.compare_export(frame.drop(columns="b").assign(c=1.0), path)
+            comparison = compare_export.compare_export(frame.drop(columns="b").assign(c=1.0), path)
             self.assertEqual(comparison["missing_columns"], ["b"])
             self.assertEqual(comparison["extra_columns"], ["c"])
             self.assertFalse(comparison["matches"])
-            self.assertFalse(ewf_tech_simulator.compare_export(frame.iloc[:1], path)["matches"])
+            self.assertFalse(compare_export.compare_export(frame.iloc[:1], path)["matches"])
 
     def test_export_xlsx_layout(self):
         frame = pd.DataFrame({"e__ewf_total__W": [1000.0, 2000.0]})
@@ -1096,22 +1111,32 @@ class CommandLineErrorChecks(unittest.TestCase):
             ewf_tech_simulator.main(list(arguments))
         return caught.exception.code, messages.getvalue()
 
+    def run_dev_tool(self, *arguments):
+        messages = io.StringIO()
+        with redirect_stderr(messages), redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as caught:
+            compare_export.main(list(arguments))
+        return caught.exception.code, messages.getvalue()
+
     def test_hours_and_full_year_are_mutually_exclusive(self):
         code, _ = self.run_main("--hours", "5", "--full-year")
         self.assertEqual(code, 2)
 
-    def test_existing_report_file_is_not_overwritten(self):
+    def test_report_file_options_belong_to_the_dev_tool(self):
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory) / "report.json"
             report.write_text("keep", encoding="utf-8")
-            code, _ = self.run_main("--report", str(report))
+            code, _ = self.run_dev_tool("--report", str(report))
             self.assertEqual(code, 2)
             self.assertEqual(report.read_text(encoding="utf-8"), "keep")
 
     def test_report_in_missing_directory_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
-            code, _ = self.run_main("--report", str(Path(directory) / "absent" / "report.json"))
+            code, _ = self.run_dev_tool("--report", str(Path(directory) / "absent" / "report.json"))
             self.assertEqual(code, 2)
+
+    def test_dev_tool_requires_reference_or_report(self):
+        code, _ = self.run_dev_tool()
+        self.assertEqual(code, 2)
 
     def test_non_positive_hours_report_failure(self):
         code, message = self.run_main("--hours", "0")
@@ -1129,11 +1154,14 @@ class CommandLineErrorChecks(unittest.TestCase):
     def test_successful_run_returns_zero_and_writes_report(self):
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory) / "report.json"
-            output = io.StringIO()
-            with redirect_stdout(output), redirect_stderr(io.StringIO()):
-                code = ewf_tech_simulator.main(["--hours", "1", "--report", str(report)])
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                code = compare_export.main(["--hours", "1", "--report", str(report)])
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(report.read_text(encoding="utf-8"))["stages"]["energy"]["rows"], 1)
+
+    def test_successful_run_returns_zero(self):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            self.assertEqual(ewf_tech_simulator.main(["--hours", "1"]), 0)
 
 
 class ExceptionChecks(unittest.TestCase):
