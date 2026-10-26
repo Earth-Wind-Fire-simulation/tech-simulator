@@ -108,33 +108,33 @@ python -m venv .venv
 .\.venv\Scripts\python.exe ewf_tech_simulator.py --hours 24
 ```
 
-This creates a local virtual environment, installs dependencies, and runs the first 24 hours of the example. The output shows mean power in W and energy in kWh. Input files are not modified.
+This creates a local virtual environment, installs dependencies, and runs the first 24 hours of the example. The run prints the inputs and parameters used, one progress line per calculation stage with timings, and the results: period, mean and peak power in W and energy in kWh. Input files are not modified.
 
 ### Parameters and outputs
 
-[input/simulation_parameters.json](input/simulation_parameters.json) lists the example parameters in component groups, using the same names and unit suffixes as the Python functions. Edit values for a different building; parameters omitted from a configuration retain their example defaults. Unknown names are rejected so a spelling mistake cannot silently change the intended run.
+[input/simulation_parameters_python.json](input/simulation_parameters_python.json) lists the example parameters in component groups, using the same names and unit suffixes as the Python functions. Edit values for a different building; parameters omitted from a configuration retain their example defaults. Unknown names are rejected so a spelling mistake cannot silently change the intended run.
 
 ```powershell
-.\.venv\Scripts\python.exe ewf_tech_simulator.py --config examples/simulation_parameters.json --full-year --xlsx data --report data/run_report.json
+.\.venv\Scripts\python.exe ewf_tech_simulator.py --config input/simulation_parameters_python.json --full-year --xlsx data
 ```
 
 - `--xlsx [FOLDER]` writes `<YYYY-MM-DDTHHMM>-ewf-sim-data_total.xlsx` into an existing folder (default `data`), with sheets `Info`, `Inputdata` and `Outputdata`. `--auteur`, `--organisatie`, `--project`, `--omschrijving`, `--site` and `--gebouw` fill the `Info` sheet.
-- `--report` writes effective parameters, source/input hashes, package versions, stage timings, warnings and summary results as JSON.
 - Output files must be new and their parent directory must exist. Existing files are never overwritten. Generated files under `data/` are ignored by Git.
 - `--year 2024` selects the supplied De Bilt weather and matching annual occupancy (`Occ<year>vac27to32and52.csv`) for 2024.
 - `--weather` and `--occupancy` select other input CSVs; pass `--year` explicitly when selecting a different year. Relative paths are resolved from the terminal's working directory.
 - `--hours 168 --start-row 3000` selects a week after occupancy/calendar processing. `--hours` and `--full-year` are mutually exclusive.
-- `--compare-xlsx` compares against an existing Grasshopper `Outputdata` sheet. Historical exports may differ intentionally after bug fixes.
+- `--quiet` prints only the results, without the inputs and stage progress.
+- `dev-tools/compare_export.py` (see `--help`) runs the same simulation with per-stage diagnostics. `--report` writes effective parameters, source/input hashes, package versions, stage timings, warnings and summary results as JSON; a reference workbook argument compares the run with an existing Grasshopper `Outputdata` export. Historical exports may differ intentionally after bug fixes.
 
-Use `python ewf_tech_simulator.py --help` for all options. The command exits with code `0` on success and `2` for invalid inputs, numerical failures, non-finite output or a comparison mismatch. Such errors are reported rather than replaced with plausible-looking results.
+Use `python ewf_tech_simulator.py --help` for all options. The command exits with code `0` on success and `2` for invalid inputs, numerical failures or non-finite output. Such errors are reported rather than replaced with plausible-looking results.
 
 The runner can also be imported from Python:
 
 ```python
 from ewf_tech_simulator import load_parameters, run_simulation
 
-parameters = load_parameters("examples/simulation_parameters.json")
-frame, report = run_simulation(
+parameters = load_parameters("input/simulation_parameters_python.json")
+frame, mean_W, total_kWh = run_simulation(
   "input/WeerData/De Bilt 2025.csv",
   "input/Occupancy Data/Occ2025vac27to32and52.csv",
   year=2025,
@@ -159,6 +159,7 @@ You can get the code from GitHub in several ways:
 ewf_tech_simulator.ghx     Grasshopper entry point (embedded adapters)
 ewf_tech_simulator.py      Standalone command-line runner and Python API
 src/                       Physical calculations, CSV loading, errors and logging
+dev-tools/                 Grasshopper export comparison
 input/                     Supplied weather and occupancy CSVs and generator, example building
 requirements.txt           Shared pinned runtime dependencies
 ```

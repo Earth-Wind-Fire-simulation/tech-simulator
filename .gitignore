@@ -83,4 +83,4 @@ desktop.ini
 *.key
 
 # Local development files
-docs/ghx_*
+.dev-tools/ghx*
