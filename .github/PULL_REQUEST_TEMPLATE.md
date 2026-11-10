@@ -5,7 +5,7 @@
 ## Checklist
 
 - [ ] I tested the change (in Rhino/Grasshopper where it touches the simulation)
-- [ ] The `# requirements:` lines (`src/`, `requirements.txt` and the `.ghx` components) are still identical
+- [ ] `requirements.txt`, `pyproject.toml`, and the Bootstrap `# requirements:` directive use the same package constraints without environment markers; other components have no `# requirements:` line
 - [ ] If the change alters numerical results: I explain why, and give the before and after numbers below
 - [ ] If I changed `ewf_tech_simulator.ghx`: I describe what changed on the canvas below
 - [ ] I updated the README or other documentation where needed

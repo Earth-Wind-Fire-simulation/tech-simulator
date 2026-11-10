@@ -421,6 +421,33 @@ class SolarChecks(unittest.TestCase):
                 solar_chimney.calculate_solar_chimney(self.solar_input(), solar_chimney_segments__0=1)
         self.assertEqual(caught.exception.data_info['solver_status'], 4)
 
+    def test_stagnated_equilibrium_is_accepted_with_verified_residual(self):
+        frame = self.solar_input()
+        frame['air_flow_office__m3_s_1'] = 0.0
+        frame['sol_ghi__W_m_2'] = 0.0
+        for status in (4, 5):
+            equilibrium = (np.array([20.0, 20.0, 20.0]),
+                           {'fvec': np.array([10.0, 10.0, 10.0])}, status, 'not making progress')
+            with self.subTest(status=status), patch.object(solar_chimney, 'fsolve', return_value=equilibrium), redirect_stdout(io.StringIO()):
+                result = solar_chimney.calculate_solar_chimney(frame, solar_chimney_segments__0=1)
+            self.assertAlmostEqual(result['temp_air_chimney_out__degC'].iloc[0], 20.0)
+
+    def test_false_negligible_reported_residual_is_rejected(self):
+        failed = (np.array([40.0, 50.0, 22.0]),
+                  {'fvec': np.array([1.4822e-323, 0.0, 0.0])}, 5, 'not making progress')
+        with patch.object(solar_chimney, 'fsolve', return_value=failed), redirect_stdout(io.StringIO()):
+            with self.assertRaises(ProcessingError) as caught:
+                solar_chimney.calculate_solar_chimney(self.solar_input(), solar_chimney_segments__0=1)
+        self.assertGreater(caught.exception.data_info['residual__W'], 0.001)
+
+    def test_zero_flow_night_has_finite_equilibrium(self):
+        frame = self.solar_input()
+        frame['air_flow_office__m3_s_1'] = 0.0
+        frame['sol_ghi__W_m_2'] = 0.0
+        with redirect_stdout(io.StringIO()):
+            result = solar_chimney.calculate_solar_chimney(frame, solar_chimney_segments__0=2)
+        self.assertAlmostEqual(result['temp_air_chimney_out__degC'].iloc[0], 20.0, places=3)
+
     def test_large_residual_is_rejected_despite_success_status(self):
         failed = (np.array([40.0, 50.0, 22.0]), {'fvec': np.array([10.0, 0.0, 0.0])}, 1, 'converged')
         with patch.object(solar_chimney, 'fsolve', return_value=failed), redirect_stdout(io.StringIO()):

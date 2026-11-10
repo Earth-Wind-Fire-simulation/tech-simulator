@@ -40,15 +40,15 @@ To run this simulator, you need:
 - A valid Rhino 8 license or the **free 90-day trial**, available at:  
   [https://www.rhino3d.com/download/](https://www.rhino3d.com/download/)
 
-Rhino includes its own embedded Python environment (CPython 3.9, `py39-rh8`). You do **not** need to install Python separately when using Grasshopper.
+Rhino includes its own embedded Python environment: CPython 3.9 in Rhino 8 (`py39-rh8`) and CPython 3.13 in Rhino 9 (`py313-rh9`). You do **not** need to install Python separately when using Grasshopper.
 
-Grasshopper automatically installs required dependencies on first load, based on the `# venv:` and `# requirements:` directives included in each component. All components use the environment `ewf-tech` with these exact versions:
+Grasshopper automatically installs required dependencies on first load, based on the `# venv:` and `# requirements:` directives in the Bootstrap component; the other components share its environment. Both Rhino versions use the environment `ewf-tech`; pip selects package releases compatible with the embedded Python version:
 
 | Package | Version | Used for |
 | --- | --- | --- |
-| numpy | 1.24.4 | numerical calculations |
-| pandas | 1.5.3 | time series data frames |
-| scipy | 1.13.1 | solving the solar chimney heat balance |
+| numpy | `~=2.0` | numerical calculations |
+| pandas | 2.2.3 | time series data frames |
+| scipy | `~=1.13` | solving the solar chimney heat balance |
 | astral | 3.2 | solar position |
 | pytz | 2025.2 | time zones |
 | openpyxl | 3.1.5 | Excel export |
@@ -98,7 +98,7 @@ The standalone Python runner is optional. Use it if you do not have Rhino, or if
 
 ### Quick start
 
-**Python 3.9 is required.** Check your version with `python --version` before proceeding.
+**Python 3.9 or 3.13 is supported.** Check your version with `python --version` before proceeding.
 
 From the repository root in PowerShell or Command Prompt:
 
@@ -215,9 +215,9 @@ This software is a collaborative effort of:
 
 We use and gratefully acknowlegde the efforts of the makers of the following source code and libraries:
 * [needforheat-dutch-weather-software](https://github.com/energietransitie/needforheat-dutch-weather-software), by [@henriterhofte](https://github.com/henriterhofte) and contributors, licensed under [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
-* [numpy 1.24.4](https://pypi.org/project/numpy/1.24.4), by Travis Oliphant et al., licensed under [BSD](https://opensource.org/licenses/BSD-3-Clause)
-* [pandas 1.5.3](https://pypi.org/project/pandas/1.5.3), by The pandas development team, licensed under [BSD](https://opensource.org/licenses/BSD-3-Clause)
-* [scipy 1.13.1](https://pypi.org/project/scipy/1.13.1), by SciPy Developers, licensed under [BSD](https://opensource.org/licenses/BSD-3-Clause)
+* [numpy 2.x](https://pypi.org/project/numpy/), by Travis Oliphant et al., licensed under [BSD](https://opensource.org/licenses/BSD-3-Clause)
+* [pandas 2.2.3](https://pypi.org/project/pandas/2.2.3), by The pandas development team, licensed under [BSD](https://opensource.org/licenses/BSD-3-Clause)
+* [scipy 1.x](https://pypi.org/project/scipy/), by SciPy Developers, licensed under [BSD](https://opensource.org/licenses/BSD-3-Clause)
 * [openpyxl 3.1.5](https://pypi.org/project/openpyxl/3.1.5), by Charlie Clark and contributors, licensed under [MIT](https://opensource.org/licenses/MIT)
 * [pytz 2025.2](https://pypi.org/project/pytz/2025.2), by Stuart Bishop, licensed under [MIT](https://opensource.org/licenses/MIT)
 * [astral 3.2](https://pypi.org/project/astral/3.2), by Simon Kennedy, licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
