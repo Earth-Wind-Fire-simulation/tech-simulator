@@ -186,23 +186,24 @@ def calculate_solar_chimney(df,
             # dit werkt beter op koude nachten. Optie is om de initial guess aan te passen op basis van de buitentemperatuur.
             retry_guess = [(air_in_temp__degC + temp_outdoor__K - temp_0_degC__K) / 2,
                            temp_outdoor__K - temp_0_degC__K, air_in_temp__degC]
+            solver_args = (air_in_temp__degC, temp_outdoor__K - temp_0_degC__K, air_flow_office__m3_s_1,
+                           solar_chimney_width__m, solar_chimney_depth__m, glazing_fraction__0, segment_height__m,
+                           solar_chimney_cross_section__m2, glazing_transmittance__0,
+                           solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1, solar_chimney_emissivity__0,
+                           solar_chimney__W_m_2)
             for guess in initial_guesses + (retry_guess,):
-                solution, solver_info, solver_status, solver_message = fsolve(
+                solution, _, solver_status, solver_message = fsolve(
                     segment_equations,
                     guess,
-                    args=(air_in_temp__degC, temp_outdoor__K - temp_0_degC__K, air_flow_office__m3_s_1,
-                          solar_chimney_width__m, solar_chimney_depth__m, glazing_fraction__0, segment_height__m,
-                          solar_chimney_cross_section__m2, glazing_transmittance__0,
-                          solar_chimney_heat_tr_glass_outdoor__W_m_2_K_1, solar_chimney_emissivity__0,
-                          solar_chimney__W_m_2),
+                    args=solver_args,
                     full_output=True
                 )
                 segment_load__W = max(
                     abs(segment_height__m * solar_chimney_width__m * glazing_fraction__0 * glazing_transmittance__0 * solar_chimney__W_m_2),
                     abs(air_flow_office__m3_s_1 * air_20C__kg_m_3 * air__J_kg_1_K_1 * (solution[2] - air_in_temp__degC))
                 )
-                residual__W = np.max(np.abs(solver_info['fvec']))
-                if (solver_status == 1 and np.isfinite(solution).all() and np.isfinite(residual__W)
+                residual__W = np.max(np.abs(segment_equations(solution, *solver_args)))
+                if (solver_status in (1, 4, 5) and np.isfinite(solution).all() and np.isfinite(residual__W)
                         and np.all(solution > -temp_0_degC__K) and residual__W <= 0.001 + 1e-6 * segment_load__W):
                     break
             else:
