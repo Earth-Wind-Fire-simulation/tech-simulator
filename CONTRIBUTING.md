@@ -13,9 +13,9 @@ This project is released under the [Apache 2.0 license](./LICENSE). By submittin
 
 ## Setting up for development
 
-The simulation core in `./src/` is plain Python 3.9 and can be edited in any editor. The Grasshopper adapters live inside `ewf_tech_simulator.ghx` (see the README).
+The simulation core in `./src/` supports Python 3.9 and 3.13 and can be edited in any editor. The Grasshopper adapters live inside `ewf_tech_simulator.ghx` (see the README).
 
-To run the core outside Grasshopper, install the pinned dependencies in a Python 3.9 environment and put `src` on the Python path:
+To run the core outside Grasshopper, install the pinned dependencies in a Python 3.9 or 3.13 environment and put `src` on the Python path:
 
 ```shell
 pip install -r requirements.txt
@@ -23,7 +23,7 @@ pip install -r requirements.txt
 
 ## Rules of the road
 
-- **Keep the dependency lines identical.** The `# requirements:` line at the top of every module in `./src/`, the file `requirements.txt`, and the script components in the `.ghx` must list exactly the same packages and versions.
+- **Keep runtime dependencies synchronized.** `requirements.txt`, `pyproject.toml`, and the Bootstrap component's `# requirements:` directive must use the same compatible package constraints. Other components declare only `# venv: ewf-tech`; a second `# requirements:` line makes RhinoCode reinstall over already-loaded packages. Avoid environment markers in RhinoCode directives.
 - **Follow the naming convention.** Variables carry their unit as a suffix, for example `wind__m_s_1`, `temp_outdoor__degC`, `air_flow_office__m3_s_1` (`__0` for dimensionless quantities).
 - **Use the custom exceptions.** Raise the errors from `src/exceptions.py` (`create_data_validation_error`, `create_configuration_error`, ...) so users get clear messages.
 - **Model changes need evidence.** If a change alters the numerical results, explain why in the pull request and give the before and after numbers (for example the yearly energy use in kWh). Keep such changes separate from refactoring.

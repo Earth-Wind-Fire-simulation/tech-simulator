@@ -1,7 +1,3 @@
-# venv: ewf-tech
-
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
-
 """
 Bezetting berekeningsmodule voor EWF Tech Simulator.
 
@@ -10,23 +6,34 @@ op basis van inputdata en bezettingsschema's. Incl. foutafhandeling
 en bestandsbeschermingsmechanismen.
 """
 
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
-import os
-import shutil
-from datetime import datetime, timedelta
-from typing import Optional
-from ewf_utils import dm3_m_3, air_flow_office_set__dm3_s_1_p_1, flow_modulation_depth__0, fan_modulation_depth__0, eta_fan_min__W0, eta_fan_max__W0
-from exceptions import create_file_not_found_error, create_permission_error, create_data_validation_error, create_processing_error
+
+from ewf_utils import (
+    air_flow_office_set__dm3_s_1_p_1,
+    dm3_m_3,
+    eta_fan_max__W0,
+    eta_fan_min__W0,
+    fan_modulation_depth__0,
+    flow_modulation_depth__0,
+)
+from schemas import OccupancyFile, OccupancyFrame, OccupancyParams, validate_inputs
+from weather import safe_read_csv
+
 
 # Calculation occupancy and derived air flow
+@validate_inputs(OccupancyParams, OccupancyFrame)
 def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p: float = 165) -> pd.DataFrame:
     """Bereken bezetting en afgeleide luchtstroom.
 
     Args:
         jaar: Jaar voor tijdsberekening.
         pad: Pad naar het bezettings CSV bestand.
-        df: Input DataFrame met tijd index.
+        df: Een rij per uur, evenveel rijen als het bezettingsbestand.
+            Rijen worden op positie gekoppeld, niet op pandas-indexlabels.
+            De periode start op 1 januari in Europe/Amsterdam.
         occupancy_mean__p: Gemiddelde bezetting in personen, standaard 165.
 
     Returns:
@@ -40,61 +47,15 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
         ProcessingError: Als bezettingsberekening faalt.
         DataValidationError: Als input data ongeldig is.
     """
-    # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
+    start = datetime(jaar, 1, 1, 0)
     df = df.copy()
-    
-    # Lees occupancy CSV veilig via copy-methode
-    try:
-        # Maak tijdelijke kopie
-        base_name = os.path.splitext(pad)[0]
-        extension = os.path.splitext(pad)[1]
-        temp_pad = f"{base_name}_temp{extension}"
-        
-        # Kopieer origineel
-        shutil.copy2(pad, temp_pad)
-        
-        # Lees gekopieerde bestand
-        df_occ = pd.read_csv(temp_pad, sep=';', decimal=',')
-        
-        # Ruim kopie op na lezen
-        try:
-            os.remove(temp_pad)
-        except Exception as cleanup_error:
-            pass  # Stil mislukte cleanup
-            
-    except FileNotFoundError:
-        raise create_file_not_found_error(pad)
-    except PermissionError:
-        raise create_permission_error(pad, "lezen")
-    except Exception as e:
-        raise create_processing_error(
-            step="CSV lezen",
-            message=f"Onverwachte fout bij het lezen van occupancy data: {str(e)}",
-            data_info={'file_path': pad, 'error_type': type(e).__name__}
-        )
-    
-    # Controleer vereiste kolom
-    if 'occupancyperc' not in df_occ.columns:
-        raise create_data_validation_error(
-            column='occupancyperc',
-            expected_type='numeric column',
-            actual_value=None
-        )
-
-    # Bereken het juiste aantal uren op basis van data lengte
-    data_uren = len(df)
-    occupancy_uren = len(df_occ)
-    # Gebruik de kleinste lengte om mismatch te voorkomen
-    target_uren = min(data_uren, occupancy_uren)
-    print("aantal uren in simulatie: ",target_uren)
-
-    # Pas DataFrame aan als nodig
-    if len(df) > target_uren:
-        df = df.iloc[:target_uren].copy()
-    if len(df_occ) > target_uren:
-        df_occ = df_occ.iloc[:target_uren].copy()
-
-    df['occupancy__perc'] = df_occ['occupancyperc']
+    df_occ = safe_read_csv(pad, decimal=',')
+    if 'occupancyperc' not in df_occ and 'occupancy(perc)' in df_occ:
+        df_occ['occupancyperc'] = df_occ['occupancy(perc)']
+    occupancy_file = OccupancyFile(df=df_occ, target_hours=len(df), year=jaar)
+    df_occ = occupancy_file.df
+    target_uren = len(df)
+    df['occupancy__perc'] = df_occ['occupancyperc'].to_numpy()
     #Tijd met tijdzone. Gebruikt voor berekening van zonnestand
     #df['tijd met tijdzone'] = df_occ['date and time']
 
@@ -115,11 +76,7 @@ def calculate_occupancy(jaar: int, pad: str, df: pd.DataFrame, occupancy_mean__p
 
     
     # Creëer tijd range met juiste lengte
-    start = datetime(jaar, 1, 1, 0)
-    stop = start + timedelta(hours=target_uren - 1)
-    
-    # Creëer tijd range met exact juiste lengte
-    tijd_range = pd.date_range(start, stop, freq='h', tz='Europe/Amsterdam')
+    tijd_range = pd.date_range(start, periods=target_uren, freq='h', tz='Europe/Amsterdam')
     
     # Voeg tijd kolom toe
     df['tijd met tijdzone'] = tijd_range

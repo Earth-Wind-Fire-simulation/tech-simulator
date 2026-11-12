@@ -1,7 +1,3 @@
-# venv: ewf-tech
-
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
-
 """
 Klimaatcascade berekeningsmodule voor EWF Tech Simulator.
 
@@ -12,17 +8,26 @@ en foutafhandeling.
 
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional
-from ewf_utils import g__m_s_2, temp_0_degC__K, water__kg_m_3, gas_constant_water__J_kg_1_K_1, air_0C__kg_m_3, air_20C__kg_m_3, water__J_kg_1_K_1, latent_heat_water__J_kg_1, vapour__J_kg_1_K_1, air__J_kg_1_K_1, temp_air_office_in__degC
-from exceptions import create_data_validation_error, create_configuration_error, create_processing_error
+
+from ewf_utils import (
+    air_0C__kg_m_3,
+    air_20C__kg_m_3,
+    air__J_kg_1_K_1,
+    g__m_s_2,
+    gas_constant_water__J_kg_1_K_1,
+    latent_heat_water__J_kg_1,
+    temp_0_degC__K,
+    vapour__J_kg_1_K_1,
+    water__J_kg_1_K_1,
+    water__kg_m_3,
+)
+from exceptions import (
+    create_processing_error,
+)
+from schemas import CascadeFrame, CascadeParams, validate_inputs
 
 # Fixed values
-#temp_water_cascade_in__degC = 13 (converted to adjustable parameter)
-#temp_air_cascade_out_set__degC = 17 (converted to adjustable parameter)
 nozzle__kg_s_1 = 0.7
-#humidity_abs_set__g_kg_1 = 6.93 (converted to adjustable parameter)
-#nozzles_min__0 = 1 (converted to adjustable parameter)
-#nozzles_max__0 = 25 (converted to adjustable parameter)
 heat_tr_water_air__W_K_1_m_2 = 225
 heat_tr_air_wall__W_K_1_m_2 = 12
 c_0_vap__Pa = 100
@@ -31,7 +36,6 @@ c_2_vap__degC = 4030.18
 c_3_vap__degC = 235
 k_evap__m_s_1 = 0.0000062 * 0.00089
 eta_cascade_water_pump__W0 = 0.75
-#loss_cascade_water_nozzle__Pa = 50000 (converted to adjustable parameter)
 loss_cascade_water_rest__Pa = 15000
 droplet_ave_dia__mm = 0.581
 droplet_terminal__m_s_1 = 1.741 * droplet_ave_dia__mm + 0.1623
@@ -39,11 +43,11 @@ droplet__vmd_dia__mm = 1.708
 droplet_ave__m3 = (4/3) * np.pi * np.power(droplet__vmd_dia__mm / (2 * 1000), 3)
 droplet_smd__m3 = 1.377
 droplet_ave__m2 = 4 * np.pi * np.power(droplet_smd__m3 / (2 * 1000), 2)
-supply__Pa = 150.0
+supply__Pa = 150.0 # TODO: expose input
 temp_air_office_in__degC = 18.0
 temp_long_term_heat_store__degC = 12.0
-cop_heat_pump_heating__W0 = 4.5
-cop_heat_pump_cooling__W0 = 15.0
+cop_heat_pump_heating__W0 = 4.5 # TODO: expose input
+cop_heat_pump_cooling__W0 = 15.0 # TODO: expose input
 e_fan_air_pre_heater__W = 0
 e_fan_air_post_heater__W = 0
 e_pump_heat_recovery__W = 0
@@ -51,21 +55,24 @@ e_fan_heat_recovery__W = 0
 
 outdoor_heat_recovery_threshold__degC = 16
 preheat_max__degC = 18
-eta_heat_recovery__W0 = 0.5
+eta_heat_recovery__W0 = 0.50 # TODO: expose input
 
 #Evaluates one segment an calculates input for the next segment
 def segment_equations(air_in__degC: float, water_in__degC: float, vapour_in__kg_m_3: float, droplets_in__kg_m_3: float,
-                      air__s: float, droplet__s: float, cascade_compactness__m2_m_3: float) -> Tuple[float, float, float, float]:
+                      air__s: float, droplet__s: float, cascade_compactness__m2_m_3: float) -> tuple[float, float, float, float]:
     """Calculate conditions for a single climate cascade segment.
     Args:
         air_in__degC: float. Temperature of input air
         water_in__degC: float. Temperature of input water
         vapour_in__kg_m_3: float. Vapour mass input
         droplets_in__kg_m_3: float. Water mass input
-        air__s: float. Timestep for air in segment
-        droplet__s: float. Timestep for water in segment
+        air__s: float. Air residence time in this segment, in seconds.
+        droplet__s: float. Droplet residence time in this segment, in seconds.
         cascade_compactness__m2_m_3: float
-    Returns: Input for next segment
+    Returns:
+        air_out__degC, water_out__degC, vapour_out__kg_m_3,
+        droplets_out__kg_m_3, in that order. Residence times are not the
+        one-hour weather interval. The caller checks each resulting state.
     """
 
 #Pre-calculations
@@ -99,6 +106,7 @@ def segment_equations(air_in__degC: float, water_in__degC: float, vapour_in__kg_
     return air_out__degC, water_out__degC, vapour_out__kg_m_3, droplets_out__kg_m_3
 
 #Evaluate climate cascade and repeat this to optimize number of nozzles
+@validate_inputs(CascadeParams, CascadeFrame)
 def calculate_climate_cascade(df: pd.DataFrame, 
                              height_cascade__m: float = 10.0,
                              cascade_width__m: float = 3.0,
@@ -115,7 +123,10 @@ def calculate_climate_cascade(df: pd.DataFrame,
     """Core climate cascade calculation.
 
     Args:
-        df: Input DataFrame with required columns.
+        df: One row per hour, with temp_overpressure_out__degC,
+            temp_air_heat_recovery_in__degC, air_flow_office__m3_s_1,
+            humidity_outdoor_rel__0, temp_outdoor__degC,
+            overpressure_room_delta__Pa and eta_fan__W0. Input is not mutated.
         height_cascade__m: Cascade height (m), default 10.0.
         cascade_width__m: Cascade width (m), default 3.0.
         cascade_depth__m: Cascade depth (m), default 2.0.
@@ -130,45 +141,15 @@ def calculate_climate_cascade(df: pd.DataFrame,
 
     Returns:
         DataFrame with added columns for climate cascade outputs.
+        Humidity output columns use g/kg, including when airflow is zero.
+        The minimum water circulation is retained when airflow is zero.
+
+    Raises:
+        ProcessingError: A trial segment produces non-finite temperatures,
+            negative vapour mass, depleted droplets or nonpositive kelvin.
+            Such a trial is not used to select the number of nozzles.
     """
-# Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()
-
-    if df is None:
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame',
-            actual_value=None,
-            custom_message='Input DataFrame is vereist voor klimaatcascade berekening.'
-        )
-
-    if df.empty:
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame (non-empty)',
-            actual_value='empty DataFrame',
-            custom_message='Input DataFrame is leeg - geen data om te verwerken.'
-        )
-
-    # Valideer vereiste kolommen
-    required_columns = [
-        'temp_overpressure_out__degC',
-        'temp_air_heat_recovery_in__degC',
-        'air_flow_office__m3_s_1',
-        'humidity_outdoor_rel__0',
-        'temp_outdoor__degC',
-        'overpressure_room_delta__Pa'
-    ]
-
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        raise create_data_validation_error(
-            column='df',
-            expected_type='pd.DataFrame met vereiste kolommen',
-            actual_value=None,
-            custom_message=f'Input DataFrame mist vereiste kolommen voor klimaatcascade berekening: {missing_columns}. '
-                           f'Beschikbare kolommen: {list(df.columns)}'
-        )
 
 # Pre-calculate cascade geometry
     cascade_segment_height__m = height_cascade__m / cascade_segments__0
@@ -196,7 +177,6 @@ def calculate_climate_cascade(df: pd.DataFrame,
         humidity_outdoor_rel__0 = df.loc[index, 'humidity_outdoor_rel__0']
         temp_outdoor__degC = df.loc[index, 'temp_outdoor__degC']
 
-        air__s = cascade_segment_height__m / df.loc[index, 'cascade_air__m_s_1']
         droplet__m_s_1 = df.loc[index, 'cascade_air__m_s_1'] + droplet_terminal__m_s_1
         df.loc[index, 'total_droplet_velocity__m_s_1'] = droplet__m_s_1
         droplet__s = cascade_segment_height__m / droplet__m_s_1
@@ -213,8 +193,9 @@ def calculate_climate_cascade(df: pd.DataFrame,
             df.loc[index, 'nozzles__0'] = nozzles_min__0
             df.loc[index, 'temp_air_cascade_out__degC'] = temp_air_cascade__degC
             df.loc[index, 'temp_water_cascade_out__degC'] = temp_water_cascade__degC
-            df.loc[index, 'humidity_cascade_out_abs__gr_kg_1'] = vapour__kg_m_3
+            df.loc[index, 'humidity_cascade_out_abs__gr_kg_1'] = humidity_outdoor_abs__gr_kg_1
         else: #else perform simulation
+            air__s = cascade_segment_height__m / df.loc[index, 'cascade_air__m_s_1']
 #Optimizing number of nozzles (set temperature/humidity must be within interval lo-hi
             lo = nozzles_min__0 - 1
             hi = nozzles_max__0 + 1
@@ -237,6 +218,16 @@ def calculate_climate_cascade(df: pd.DataFrame,
                         air__s,
                         droplet__s,
                         cascade_compactness__m2_m_3)
+                    if (not np.isfinite((temp_air_seg__degC, temp_water_seg__degC, vapour_seg__kg_m_3, droplets_seg__kg_m_3)).all()
+                            or min(temp_air_seg__degC, temp_water_seg__degC) <= -temp_0_degC__K
+                            or vapour_seg__kg_m_3 < 0 or droplets_seg__kg_m_3 <= 0
+                            or temp_water_seg__degC == -c_3_vap__degC):
+                        raise create_processing_error(
+                            'cascade segment',
+                            f'Ongeldige toestand bij rij {index}, segment {segment + 1}, {number_of_nozzles} sproeiers. '
+                            'Controleer debiet, segmentgrootte en modelgeldigheid.',
+                            {'index': index, 'segment': segment + 1, 'nozzles': number_of_nozzles}
+                        )
 
 #Check weather temperature/humidity is below/above setpoint. Adjust inteval lo-hi
                 if  ( temp_air_cascade__degC >= temp_air_in_threshold__degC and (temp_air_seg__degC < temp_air_cascade_out_set__degC) ) or ( temp_air_cascade__degC < temp_air_in_threshold__degC and (vapour_seg__kg_m_3 / air_20C__kg_m_3 * 1000 > humidity_abs_set__g_kg_1) ):

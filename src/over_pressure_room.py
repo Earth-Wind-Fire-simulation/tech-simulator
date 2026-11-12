@@ -1,7 +1,3 @@
-# venv: ewf-tech
-
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
-
 """
 Overdrukkamer berekeningsmodule voor EWF Tech Simulator.
 
@@ -11,27 +7,33 @@ en drukberekeningen.
 """
 
 import numpy as np
-import pandas as pd
-from ewf_utils import air_20C__kg_m_3, wind_correction_factor__0, wind_local_displacement_height__m, wind_local_roughness_length__m, venturi_wind_acceleration__0
+
+from ewf_utils import (
+    air_20C__kg_m_3,
+    venturi_wind_acceleration__0,
+    wind_correction_factor__0,
+    wind_local_displacement_height__m,
+    wind_local_roughness_length__m,
+)
+from schemas import OverpressureFrame, OverpressureParams, validate_inputs
 
 # Vaste codewaarden
 wind_overpressure_inflow_threshold__m_s_1 = 2.5  # Drempel windsnelheid uit vergelijking
 wind_overpressure_coefficient__0 = 0.8  # Coëfficiënt uit vergelijking
 
 # Berekening van overdrukkamercondities
+@validate_inputs(OverpressureParams, OverpressureFrame)
 def calculate_overpressure_room(df, wind_overpressure_inflow_height__m=17.0):
     """Bereken overdrukkamercondities op basis van wind en temperatuur.
 
     Args:
-        df: Input DataFrame met vereiste kolommen ['wind_knmi__m_s_1', 'temp_outdoor__degC'].
+        df: Een rij per uur met wind__m_s_1 en temp_outdoor__degC.
         wind_overpressure_inflow_height__m: Hoogte voor wind overdruk instroom (m), standaard 17.0.
     
     Returns:
-        DataFrame met toegevoegde kolommen: temp_overpressure_in__degC, temp_overpressure_out__degC, overpressure_room_gain__Pa.
+        Kopie met temp_overpressure_in__degC, temp_overpressure_out__degC,
+        wind_overpressure_inflow__m_s_1 en overpressure_room_delta__Pa.
     """
-    if df is None:
-        raise ValueError("Input DataFrame is vereist voor overdrukkamer berekening.")
-    
     # Maak een kopie van de input DataFrame om mutatieproblemen in Grasshopper te voorkomen
     df = df.copy()
     

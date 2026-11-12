@@ -1,12 +1,13 @@
-# Dependencies of the EWF Tech Simulator (Python 3.9, as embedded in Rhino 8).
+# Shared dependencies for Rhino 8 (Python 3.9), Rhino 9 (Python 3.13), and standalone runs.
 #
-# Inside Rhino/Grasshopper these are installed automatically from the
-# '# requirements:' line at the top of each script; keep that line identical
-# to this file. This file is for development outside Rhino (tests, linting).
-numpy==1.24.4
-pandas==1.5.3
+# RhinoCode installs these from each Grasshopper script's '# requirements:'
+# directive. Compatible-release ranges let pip select wheels for Python 3.9 or 3.13.
+# This file is also used for development outside Rhino (tests, linting).
+numpy~=2.0
+pandas==2.2.3
 pytz==2025.2
 astral==3.2
-scipy==1.13.1
+scipy~=1.13
 openpyxl==3.1.5
+pydantic==2.11.10
 

@@ -1,7 +1,3 @@
-# venv: ewf-tech
-
-# requirements: numpy==1.24.4, pandas==1.5.3, pytz==2025.2, astral==3.2, scipy
-
 """
 Custom exceptions voor EWF Tech Simulator.
 
@@ -9,7 +5,7 @@ Voorziet specifieke, beschrijvende foutafhandeling met foutcodes
 en gebruiksvriendelijke berichten.
 """
 
-from typing import Optional, Any
+from typing import Any, Optional
 
 
 class EWFException(Exception):
@@ -139,23 +135,29 @@ def create_permission_error(file_path: str, action: str = None) -> DataFileError
 
 def create_data_validation_error(column: str, expected_type: str, actual_value: Any = None, custom_message: str = None) -> DataValidationError:
     """Create a standardized data validation error with optional custom message."""
-    message = custom_message if custom_message else f"Data validatiefout in kolom '{column}'."
-    return DataValidationError(
+    message = custom_message if custom_message else f"Data validatiefout in kolom '{column}'. Verwacht: {expected_type}."
+    if actual_value is not None:
+        message += f" Ontvangen: {actual_value!r}."
+    error = DataValidationError(
         message=message,
         column=column,
         expected_type=expected_type,
         error_code=ERROR_CODES['DATA_VALIDATION']
     )
+    error.details['actual_value'] = actual_value
+    return error
 
 
 def create_configuration_error(parameter: str, valid_range: str, actual_value: Any = None) -> ConfigurationError:
     """Create a standardized configuration error."""
-    return ConfigurationError(
-        message=f"Configuratiefout in parameter '{parameter}'.",
+    error = ConfigurationError(
+        message=f"Configuratiefout in parameter '{parameter}'. Verwacht: {valid_range}. Ontvangen: {actual_value!r}.",
         parameter=parameter,
         valid_range=valid_range,
         error_code=ERROR_CODES['CONFIGURATION']
     )
+    error.details['actual_value'] = actual_value
+    return error
 
 
 def create_processing_error(step: str, message: str, data_info: Optional[dict] = None) -> ProcessingError:
