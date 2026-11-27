@@ -79,8 +79,13 @@
     }
 
     .brand-group {
+      flex: 1 1 0;
       min-width: 0;
       gap: 1.25rem;
+    }
+
+    .brand-group > a {
+      flex: 0 0 auto;
     }
 
     .brand-logo {
@@ -90,6 +95,8 @@
     }
 
     .partner-logos {
+      flex: 1 1 auto;
+      min-width: 0;
       gap: 0.75rem;
     }
 
@@ -131,6 +138,18 @@
       background: rgb(69 185 124);
       color: var(--white);
     }
+
+    .hero-nav-wrap {
+      display: none;
+    }
+
+    .hero-nav-wrap nav a {
+      border-color: var(--white);
+      background: var(--white);
+      color: #000;
+    }
+
+    .hero-nav-wrap nav a:hover { background: #edf3ee; }
 
     .hero::after {
       position: absolute;
@@ -441,14 +460,7 @@
       font-size: 0.85rem;
       letter-spacing: 0;
       overflow: hidden;
-    }
-
-    .benefit-number::before {
-      position: absolute;
-      inset: 0;
-      background: var(--paper);
-      content: "";
-      clip-path: polygon(0 0, 35% 0, 15% 100%, 0 100%);
+      background-image: linear-gradient(105deg, var(--paper) 0 23%, transparent 23%);
     }
 
     .benefit-number span {
@@ -458,15 +470,15 @@
     }
 
     .benefit:first-child .benefit-number {
-      background: rgb(69 185 124);
+      background-color: rgb(69 185 124);
     }
 
     .benefit:nth-child(2) .benefit-number {
-      background: rgb(177 210 73);
+      background-color: rgb(177 210 73);
     }
 
     .benefit:last-child .benefit-number {
-      background: rgb(213 224 91);
+      background-color: rgb(213 224 91);
     }
 
     .start {
@@ -551,26 +563,63 @@
 
     footer p { margin: 0; }
 
+    @media (max-width: 1100px) {
+      .topbar nav { display: none; }
+      .brand-group {
+        flex: 1 1 100%;
+      }
+      .partner-logos {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .hero-nav-wrap {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: 1.02fr 0.98fr;
+        align-items: start;
+        gap: 2.5rem;
+        padding-top: 1rem;
+      }
+      .hero-nav-wrap nav {
+        width: 100%;
+        max-width: 510px;
+        grid-column: 2;
+        justify-self: end;
+        gap: 0.6rem;
+      }
+      .hero-nav-wrap nav a {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+        white-space: normal;
+      }
+    }
+
     @media (max-width: 760px) {
       .wrap { width: min(100% - 2rem, 560px); }
+      .hero-nav-wrap {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+      .hero-nav-wrap nav {
+        grid-column: 1;
+        max-width: none;
+      }
       .topbar-inner {
         min-height: 68px;
-        flex-wrap: wrap;
         gap: 0.75rem;
         padding-block: 0.75rem;
       }
-      .brand-group { width: 100%; justify-content: space-between; gap: 0.75rem; }
+      .brand-group { justify-content: space-between; gap: 0.75rem; }
       .brand-logo { width: 110px; }
       .partner-logos {
-        flex: 1;
-        min-width: 0;
-        justify-content: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
         gap: 0.5rem;
-        overflow-x: auto;
-        scrollbar-width: thin;
       }
       .partner-logos img { max-width: 2.75rem; height: 1.5rem; }
-      nav { flex-wrap: wrap; gap: 0.4rem; font-size: 0.8rem; }
+      .hero-nav-wrap nav { flex-wrap: nowrap; gap: 0.4rem; font-size: 0.8rem; }
       nav a { padding: 0.35rem 0.5rem; }
       .hero-grid {
         min-height: 0;
@@ -611,22 +660,15 @@
   <header class="topbar">
     <div class="wrap topbar-inner">
       <div class="brand-group">
-        <a href="#boven" aria-label="EWF Tech Simulator, naar boven">
-          <img
-            class="brand-logo"
-            src="img/logos/ewf-lab-logo.jpg"
-            alt="EWF-Lab: Earth, Wind and Fire"
-            width="245"
-            height="84">
-        </a>
         <div class="partner-logos" aria-label="Samenwerkingspartners">
-          <img src="img/logos/abt-quake.svg" alt="ABT" title="ABT">
-          <img src="img/logos/bam-logo-mobile_0.png" alt="BAM" title="BAM">
-          <img src="img/logos/Halmos.png" alt="Halmos" title="Halmos">
-          <img src="img/logos/haskoning-logo.svg" alt="Haskoning" title="Haskoning">
-          <img src="img/logos/Saint-Gobain%20logo.jpg" alt="Saint-Gobain" title="Saint-Gobain">
-          <img src="img/logos/TKI-Urban-energy.png" alt="TKI Urban Energy" title="TKI Urban Energy">
-          <img src="img/logos/windesheim-logo-png-transparent.png" alt="Windesheim" title="Windesheim">
+          <img class="brand-logo" src="landingpage/img/logos/ewf-lab-logo.jpg" alt="EWF-Lab: Earth, Wind and Fire">
+          <img src="landingpage/img/logos/windesheim-logo-png-transparent.png" alt="Windesheim" title="Windesheim">
+          <img src="landingpage/img/logos/abt-quake.svg" alt="ABT" title="ABT">
+          <img src="landingpage/img/logos/bam-logo-mobile_0.png" alt="BAM" title="BAM">
+          <img src="landingpage/img/logos/Halmos.png" alt="Halmos" title="Halmos">
+          <img src="landingpage/img/logos/haskoning-logo.svg" alt="Haskoning" title="Haskoning">
+          <img src="landingpage/img/logos/Saint-Gobain%20logo.jpg" alt="Saint-Gobain" title="Saint-Gobain">
+          <img src="landingpage/img/logos/TKI-Urban-energy.png" alt="TKI Urban Energy" title="TKI Urban Energy">
         </div>
       </div>
       <nav aria-label="Hoofdnavigatie">
@@ -639,6 +681,13 @@
 
   <main id="inhoud">
     <section class="hero" id="boven" aria-labelledby="hero-title">
+      <div class="wrap hero-nav-wrap">
+        <nav aria-label="Hoofdnavigatie">
+          <a href="#ewf">Wat is EWF?</a>
+          <a href="#simulator">De simulator</a>
+          <a class="nav-cta" href="#start">Aan de slag</a>
+        </nav>
+      </div>
       <div class="wrap hero-grid">
         <div>
           <p class="section-label">EWF Tech Simulator</p>
@@ -661,7 +710,7 @@
           </figure>
           <figure class="hero-panel hero-schematic">
             <img
-              src="img/ewf-concept-schematic.png"
+              src="landingpage/img/ewf-concept-schematic.png"
               alt="Doorsnedeschema van het EWF-concept met Ventec-dak, zonneschoorsteen en klimaatcascade">
           </figure>
         </div>
@@ -707,20 +756,20 @@
             <span class="flow-number" aria-hidden="true">1</span>
             <h3>Voer de parameters in</h3>
             <p>Pas gebouwparameters aan en gebruik bezettingsprofielen en weerdata als invoer.</p>
-            <img class="flow-image" src="img/clash-ifc-modellen.png" alt="3D-model van gebouw en EWF-componenten voor ruimtelijke afstemming" loading="lazy">
+            <img class="flow-image" src="landingpage/img/clash-ifc-modellen.png" alt="3D-model van gebouw en EWF-componenten voor ruimtelijke afstemming" loading="lazy">
           </article>
           <article>
             <span class="flow-number" aria-hidden="true">2</span>
             <h3>Voer de berekening uit</h3>
             <p>Volg de berekening van zonneschoorsteen, Ventec-dak, overdrukruimte en klimaatcascade.</p>
-            <img class="flow-image" src="img/grasshopper-definitie.png" alt="Grasshopper-definitie van de EWF-simulator met invoer en gekoppelde componenten" loading="lazy">
+            <img class="flow-image" src="landingpage/img/grasshopper-definitie.png" alt="Grasshopper-definitie van de EWF-simulator met invoer en gekoppelde componenten" loading="lazy">
           </article>
           <article>
             <span class="flow-number" aria-hidden="true">3</span>
             <h3>Bekijk de uitkomsten</h3>
             <p>Bekijk de componenttoestanden en het energiegebruik per uur; exporteer de resultaten naar Excel.</p>
             <div class="flow-image-frame">
-              <img class="flow-image" src="img/simulator-uitkomsten.png" alt="Uurlijkse simulatiegegevens in Excel, met onder meer wind, buitentemperatuur, zoninstraling en bezetting" loading="lazy">
+              <img class="flow-image" src="landingpage/img/simulator-uitkomsten.png" alt="Uurlijkse simulatiegegevens in Excel, met onder meer wind, buitentemperatuur, zoninstraling en bezetting" loading="lazy">
             </div>
           </article>
         </div>
@@ -793,11 +842,11 @@
       </p>
       <div class="project-links">
         <a class="button project-link" href="https://www.windesheim.nl/onderzoek/onderzoeksprojecten/energietransitie/ewf-tech" target="_blank" rel="noopener noreferrer">
-          <img src="img/logos/iconWindesheim.webp" alt="">
+          <img src="landingpage/img/logos/iconWindesheim.webp" alt="">
           Over EWF-Tech bij Windesheim
         </a>
         <a class="button project-link" href="https://www.ewflab.nl/" target="_blank" rel="noopener noreferrer">
-          <img src="img/iconEWFlab.png" alt="">
+          <img src="landingpage/img/iconEWFlab.png" alt="">
           EWF-Lab – Earth, Wind and Fire
         </a>
       </div>
