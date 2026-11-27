@@ -1,6 +1,6 @@
 # Earth, Wind & Fire (EWF) simulator
 
-A modular Python-based simulator of the Earth-Wind-Fire (EWF) ventilation system, designed for integration with Rhino 8 and Grasshopper.
+A modular Python-based simulator of the Earth-Wind-Fire (EWF) ventilation system, designed for integration with Rhino 9 and Grasshopper.
 An optional standalone Python runner is also available. Both entry points use the same calculation modules.
 
 
@@ -16,9 +16,9 @@ An optional standalone Python runner is also available. Both entry points use th
 * [Credits](#credits)
 
 ## General info
-This repository contains the Rhino 8 and Grasshopper implementation of the **EWF Tech Simulator**, a modular and efficient simulation of the Earth, Wind & Fire (EWF) ventilation system. The model estimates yearly energy use with an hourly time step (60 minutes; other time steps are not supported), and simulates predefined airflows with specific temperature and humidity targets.
+This repository contains the Rhino 9 and Grasshopper implementation of the **EWF Tech Simulator**, a modular and efficient simulation of the Earth, Wind & Fire (EWF) ventilation system. The model estimates yearly energy use with an hourly time step (60 minutes; other time steps are not supported), and simulates predefined airflows with specific temperature and humidity targets.
 
-The recommended way to use the simulator is inside **Rhino 8** using **Grasshopper**, where each simulation component is embedded as a Python block on the Grasshopper canvas. Each component consists of two linked parts:
+The recommended way to use the simulator is inside **Rhino 9** using **Grasshopper**, where each simulation component is embedded as a Python block on the Grasshopper canvas. Each component consists of two linked parts:
 
 - the Grasshopper adapter, embedded in `ewf_tech_simulator.ghx` as a *Python 3 Script* component, which maps Grasshopper port names to simulation variables and calls the Python simulation core. The adapters are stored (base64-encoded) inside the `.ghx` file; there is no separate `./scripts/` folder.
 - `./src/<component>.py` – the core simulation logic for each component.
@@ -27,22 +27,19 @@ This modular architecture improves transparency, testability, and reuse of each 
 
 ## Using Rhino & Grasshopper
 
-This section explains how to **use the software without modifying the source code**. You only need Rhino8 and Grasshopper, no separate Python installation or development setup.
+This section explains how to **use the software without modifying the source code**. You only need Rhino 9 and Grasshopper, no separate Python installation or development setup.
 
 ### Prerequisites
 To run this simulator, you need:
 
-- **Rhino 8**, version SR20 or later, with **Grasshopper**  
-  > Tested with:  
-  > Rhino 8 SR20 (build 8.20.25157.13001, dated 2025-06-06)  
-  > Grasshopper build 1.0.0008 (dated 2025-06-06)
+- **Rhino 9** with **Grasshopper**. Rhino 9 is the current target; its exact tested build and validation status are to be confirmed. The previously documented test was Rhino 8 SR20 (build 8.20.25157.13001) with Grasshopper build 1.0.0008.
   
-- A valid Rhino 8 license or the **free 90-day trial**, available at:  
+- A valid Rhino 9 license or the **free 90-day trial**, available at:
   [https://www.rhino3d.com/download/](https://www.rhino3d.com/download/)
 
-Rhino includes its own embedded Python environment: CPython 3.9 in Rhino 8 (`py39-rh8`) and CPython 3.13 in Rhino 9 (`py313-rh9`). You do **not** need to install Python separately when using Grasshopper.
+Rhino 9 includes its own embedded Python environment: CPython 3.13 (`py313-rh9`). You do **not** need to install Python separately when using Grasshopper.
 
-Grasshopper automatically installs required dependencies on first load, based on the `# venv:` and `# requirements:` directives in the Bootstrap component; the other components share its environment. Both Rhino versions use the environment `ewf-tech`; pip selects package releases compatible with the embedded Python version:
+Grasshopper automatically installs required dependencies on first load, based on the `# venv:` and `# requirements:` directives in the Bootstrap component; the other components share its `ewf-tech` environment. Pip selects package releases compatible with Rhino 9's embedded Python version:
 
 | Package | Version | Used for |
 | --- | --- | --- |
@@ -53,11 +50,11 @@ Grasshopper automatically installs required dependencies on first load, based on
 | pytz | 2025.2 | time zones |
 | openpyxl | 3.1.5 | Excel export |
 
-For exporting an IFC-model, a plugin is needed called 'IFChopper'. Search at www.food4rhino.com and put the ifchopperfiles in the plugin directory of Rhino, normally `c:/ProgramFiles/Rhino8/plugins`.
+For exporting an IFC model, the IFChopper plugin is required. Find it at [Food4Rhino](https://www.food4rhino.com/) and install it in Rhino 9's plug-in directory.
 
 ### Running the simulator in Grasshopper
 
-1. Launch **Rhino 8**
+1. Launch **Rhino 9**
 2. Start **Grasshopper** by typing `Grasshopper` in the Rhino command line.
 3. Open the file `ewf_tech_simulator.ghx`
 4. Dependencies will install automatically on first load (this may take a few minutes the first time).
@@ -70,11 +67,11 @@ Normally, dependencies install automatically. If something went wrong and Grassh
 
 1. Close Rhino if it is running.
 2. Open a terminal (e.g. PowerShell or Command Prompt).
-3. Find the folder of the `ewf-tech` environment: `C:\Users\your-username\.rhinocode\py39-rh8\site-envs\ewf-tech-XXXXXXXX` (the last part is random and differs per computer).
+3. Find the folder of the `ewf-tech` environment: `C:\Users\your-username\.rhinocode\py313-rh9\site-envs\ewf-tech-XXXXXXXX` (the last part is random and differs per computer).
 4. Run the following command, replacing `your-username` with your own and `ewf-tech-XXXXXXXX` with the folder name you found, from the folder that contains `requirements.txt`:
 
    ```shell
-   "C:\Users\your-username\.rhinocode\py39-rh8\python.exe" -m pip install --target "C:\Users\your-username\.rhinocode\py39-rh8\site-envs\ewf-tech-XXXXXXXX" -r requirements.txt
+   "C:\Users\your-username\.rhinocode\py313-rh9\python.exe" -m pip install --target "C:\Users\your-username\.rhinocode\py313-rh9\site-envs\ewf-tech-XXXXXXXX" -r requirements.txt
    ```
 
 5. Start Rhino again.

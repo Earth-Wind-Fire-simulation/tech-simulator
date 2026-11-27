@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Verken de energetische prestaties van het EWF-ventilatieconcept met een open-source simulatie in Rhino 9 en Grasshopper.">
+  <title>EWF Tech Simulator: inzicht in natuurlijke ventilatie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #15343a;
+      --muted: #52676a;
+      --paper: white;
+      --white: #fff;
+      --line: #dce3df;
+      --green: #24574e;
+      --green-dark: #193f39;
+      --orange: #e8784b;
+      --sans: "Roboto", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    a { color: inherit; }
+
+    a:focus-visible {
+      outline: 3px solid var(--orange);
+      outline-offset: 4px;
+    }
+
+    .skip-link {
+      position: absolute;
+      z-index: 10;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.65rem 1rem;
+      transform: translateY(-160%);
+      background: var(--white);
+      color: var(--ink);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .wrap {
+      width: min(1120px, calc(100% - 3rem));
+      margin-inline: auto;
+    }
+
+    .topbar {
+      background: var(--paper);
+    }
+
+    .topbar-inner {
+      display: flex;
+      min-height: 76px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand-group,
+    .partner-logos {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand-group {
+      min-width: 0;
+      gap: 1.25rem;
+    }
+
+    .brand-logo {
+      display: block;
+      width: 145px;
+      height: auto;
+    }
+
+    .partner-logos {
+      gap: 0.75rem;
+    }
+
+    .partner-logos img {
+      display: block;
+      width: auto;
+      max-width: 4.5rem;
+      height: 2rem;
+      object-fit: contain;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+    }
+
+    nav a {
+      padding: 0.45rem 0.65rem;
+      border: 1px solid rgb(48, 132, 81);
+      border-radius: 2px;
+      background: rgb(48, 132, 81);
+      color: var(--white);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    nav a:hover { background: rgb(38, 112, 67); }
+
+    .nav-cta {
+      font-weight: 650;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: rgb(69 185 124);
+      color: var(--white);
+    }
+
+    .hero::after {
+      position: absolute;
+      top: -15%;
+      right: -3.6rem;
+      bottom: -15%;
+      width: 15.25rem;
+      background: rgb(48, 132, 81);
+      content: "";
+      transform: rotate(10deg);
+      transform-origin: center;
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      min-height: 570px;
+      grid-template-columns: 1.02fr 0.98fr;
+      align-items: center;
+      gap: 2.5rem;
+      padding-block: 4.5rem;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 650px;
+      margin-bottom: 1.4rem;
+      font-size: clamp(3.2rem, 6vw, 5.2rem);
+      font-weight: 400;
+      letter-spacing: -0.045em;
+      line-height: 1.02;
+    }
+
+    .hero-copy {
+      max-width: 490px;
+      margin-bottom: 2rem;
+      color: #e3ece7;
+      font-size: 1.1rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 50px;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      padding: 0.75rem 1.15rem;
+      border: 1px solid transparent;
+      border-radius: 2px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background-color 160ms ease;
+    }
+
+    .button svg {
+      display: block;
+      width: 1.25rem;
+      height: 1.25rem;
+      flex: 0 0 auto;
+    }
+
+    .button-primary {
+      background: var(--white);
+      color: var(--green-dark);
+    }
+
+    .button-primary:hover { background: #e8efeb; }
+
+    .button-light {
+      border-color: #b9d1c9;
+      color: var(--white);
+    }
+
+    .button-light:hover { background: rgb(255 255 255 / 10%); }
+
+    .hero-art {
+      display: grid;
+      width: 100%;
+      max-width: 510px;
+      aspect-ratio: 2.1 / 1;
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: 4px;
+      box-shadow: 0 8px 24px rgb(21 52 58 / 14%);
+      align-self: start;
+      margin-top: 2.15rem;
+      justify-self: end;
+    }
+
+    .hero-panel {
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      background: var(--white);
+    }
+
+    .hero-panel img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hero-photo img {
+      object-fit: cover;
+    }
+
+    .hero-schematic img {
+      object-fit: contain;
+    }
+
+    .intro {
+      display: grid;
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 5rem;
+      padding-block: 6rem;
+    }
+
+    .section-label {
+      margin: 0 0 0.9rem;
+      color: var(--green);
+      font-size: 0.76rem;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin-bottom: 1.2rem;
+      font-size: clamp(2.2rem, 4vw, 3.35rem);
+      font-weight: 400;
+      letter-spacing: -0.035em;
+      line-height: 1.12;
+    }
+
+    .section-copy {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 1.03rem;
+    }
+
+    .intro-lead {
+      color: var(--ink);
+      font-size: 1.25rem;
+      line-height: 1.55;
+    }
+
+    .simulator {
+      padding-block: 6rem;
+      background: #edf0e9;
+    }
+
+    .simulator-heading {
+      display: grid;
+      grid-template-columns: 1fr 0.78fr;
+      align-items: end;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .simulator-heading h2 { max-width: 590px; margin-bottom: 0; }
+    .simulator-heading .section-copy { padding-bottom: 0.35rem; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+
+    .flow article {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 1.8rem 1.8rem 0 6rem;
+      border: 1px solid #dce3df;
+      border-radius: 4px;
+      background: var(--white);
+      box-shadow: 0 5px 16px rgb(21 52 58 / 5%);
+    }
+
+    .flow-number {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      padding: 1.8rem 0 0 1rem;
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 700;
+      isolation: isolate;
+      pointer-events: none;
+    }
+
+    .flow-number::before {
+      position: absolute;
+      z-index: -1;
+      top: -15%;
+      bottom: -15%;
+      left: -2.6rem;
+      width: 4.25rem;
+      background: var(--step-color);
+      content: "";
+      transform: rotate(10deg);
+      transform-origin: center;
+    }
+
+    .flow article:first-child .flow-number {
+      --step-color: rgb(69 185 124);
+    }
+
+    .flow article:nth-child(2) .flow-number {
+      --step-color: rgb(177 210 73);
+    }
+
+    .flow article:last-child .flow-number {
+      --step-color: rgb(213 224 91);
+    }
+
+    .flow h3, .benefit h3 {
+      margin-bottom: 0.55rem;
+      font-size: 1.08rem;
+      font-weight: 700;
+    }
+
+    .flow h3 { font-size: 1rem; }
+
+    .flow p, .benefit p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .flow-image {
+      display: block;
+      width: calc(100% + 7.8rem);
+      height: 145px;
+      margin: auto -1.8rem 0 -6rem;
+      object-fit: cover;
+    }
+
+    .flow-image-frame {
+      width: calc(100% + 7.8rem);
+      height: 145px;
+      margin: auto -1.8rem 0 -6rem;
+      background: #c9cecc;
+    }
+
+    .flow-image-frame .flow-image {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0.72;
+    }
+
+    .benefits {
+      padding-block: 6rem;
+    }
+
+    .benefits-top {
+      display: grid;
+      grid-template-columns: 0.85fr 1.15fr;
+      align-items: end;
+      gap: 4rem;
+      margin-bottom: 3rem;
+    }
+
+    .benefits-top h2 { margin-bottom: 0; }
+
+    .benefit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+
+    .benefit {
+      padding-top: 1.3rem;
+      border-top: 2px solid var(--green);
+    }
+
+    .benefit-tag {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      color: var(--green);
+      font-size: 0.72rem;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .benefit-number {
+      position: relative;
+      display: inline-grid;
+      width: 2rem;
+      height: 2rem;
+      margin-right: 0.7rem;
+      place-items: center;
+      color: var(--white);
+      font-size: 0.85rem;
+      letter-spacing: 0;
+      overflow: hidden;
+    }
+
+    .benefit-number::before {
+      position: absolute;
+      inset: 0;
+      background: var(--paper);
+      content: "";
+      clip-path: polygon(0 0, 35% 0, 15% 100%, 0 100%);
+    }
+
+    .benefit-number span {
+      position: relative;
+      z-index: 1;
+      transform: translateX(0.2rem);
+    }
+
+    .benefit:first-child .benefit-number {
+      background: rgb(69 185 124);
+    }
+
+    .benefit:nth-child(2) .benefit-number {
+      background: rgb(177 210 73);
+    }
+
+    .benefit:last-child .benefit-number {
+      background: rgb(213 224 91);
+    }
+
+    .start {
+      padding-block: 5rem;
+      background: rgb(69 185 124);
+      color: var(--white);
+    }
+
+    .start-inner {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 3rem;
+    }
+
+    .start h2 {
+      max-width: 670px;
+      margin-bottom: 0.9rem;
+    }
+
+    .start p:not(.section-label) {
+      max-width: 640px;
+      margin-bottom: 0;
+      color: #d1e0d9;
+    }
+
+    .start .section-label { color: var(--green); }
+    .start .actions { justify-content: flex-end; }
+    .start .button-light { white-space: nowrap; }
+
+    .project-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      padding-block: 2.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .project-note p {
+      max-width: 720px;
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .project-links {
+      display: flex;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .project-link {
+      border-color: var(--green);
+      color: var(--green-dark);
+      white-space: nowrap;
+    }
+
+    .project-link img {
+      display: block;
+      width: 1.5rem;
+      height: 1.5rem;
+      margin-right: 0.35rem;
+      object-fit: contain;
+    }
+
+    .project-link:hover {
+      background: #e7eee9;
+    }
+
+    footer {
+      padding-block: 1.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    footer p { margin: 0; }
+
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 2rem, 560px); }
+      .topbar-inner {
+        min-height: 68px;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding-block: 0.75rem;
+      }
+      .brand-group { width: 100%; justify-content: space-between; gap: 0.75rem; }
+      .brand-logo { width: 110px; }
+      .partner-logos {
+        flex: 1;
+        min-width: 0;
+        justify-content: flex-start;
+        gap: 0.5rem;
+        overflow-x: auto;
+        scrollbar-width: thin;
+      }
+      .partner-logos img { max-width: 2.75rem; height: 1.5rem; }
+      nav { flex-wrap: wrap; gap: 0.4rem; font-size: 0.8rem; }
+      nav a { padding: 0.35rem 0.5rem; }
+      .hero-grid {
+        min-height: 0;
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+        padding-block: 4rem 3rem;
+      }
+      h1 { font-size: clamp(3.1rem, 14vw, 4.5rem); }
+      .hero-art {
+        max-width: none;
+        align-self: auto;
+        margin-top: 0;
+        justify-self: start;
+      }
+      .intro, .simulator-heading, .benefits-top {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+        padding-block: 4rem;
+      }
+      .simulator-heading, .benefits-top { padding-block: 0; }
+      .flow, .benefit-grid { grid-template-columns: 1fr; }
+      .flow-image { height: 180px; margin-top: auto; }
+      .flow-image-frame { height: 180px; margin-top: auto; }
+      .benefits { padding-block: 4rem; }
+      .start-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .start .actions { justify-content: flex-start; }
+      .project-note { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#inhoud">Ga naar de inhoud</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand-group">
+        <a href="#boven" aria-label="EWF Tech Simulator, naar boven">
+          <img
+            class="brand-logo"
+            src="img/logos/ewf-lab-logo.jpg"
+            alt="EWF-Lab: Earth, Wind and Fire"
+            width="245"
+            height="84">
+        </a>
+        <div class="partner-logos" aria-label="Samenwerkingspartners">
+          <img src="img/logos/abt-quake.svg" alt="ABT" title="ABT">
+          <img src="img/logos/bam-logo-mobile_0.png" alt="BAM" title="BAM">
+          <img src="img/logos/Halmos.png" alt="Halmos" title="Halmos">
+          <img src="img/logos/haskoning-logo.svg" alt="Haskoning" title="Haskoning">
+          <img src="img/logos/Saint-Gobain%20logo.jpg" alt="Saint-Gobain" title="Saint-Gobain">
+          <img src="img/logos/TKI-Urban-energy.png" alt="TKI Urban Energy" title="TKI Urban Energy">
+          <img src="img/logos/windesheim-logo-png-transparent.png" alt="Windesheim" title="Windesheim">
+        </div>
+      </div>
+      <nav aria-label="Hoofdnavigatie">
+        <a href="#ewf">Wat is EWF?</a>
+        <a href="#simulator">De simulator</a>
+        <a class="nav-cta" href="#start">Aan de slag</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="inhoud">
+    <section class="hero" id="boven" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="section-label">EWF Tech Simulator</p>
+          <h1 id="hero-title">Laat de natuur je gebouw ventileren.</h1>
+          <p class="hero-copy">
+            Met de EWF Tech Simulator onderzoek je hoe Earth, Wind &amp; Fire werkt
+            en wat het concept kan betekenen voor een gebouw.
+          </p>
+          <div class="actions">
+            <a class="button button-primary" href="#start">Ontdek de simulator</a>
+            <a class="button button-light" href="#ewf">Leer EWF kennen</a>
+          </div>
+        </div>
+        <div class="hero-art" role="group" aria-label="EWF in de praktijk en als technisch concept">
+          <figure class="hero-panel hero-photo">
+            <img
+              src="https://www.ewflab.nl/wp-content/uploads/2022/11/EWF-MFOII-EUR-221110.jpg"
+              alt="Buitenaanzicht van een modern utiliteitsgebouw met installaties op het dak"
+              fetchpriority="high">
+          </figure>
+          <figure class="hero-panel hero-schematic">
+            <img
+              src="img/ewf-concept-schematic.png"
+              alt="Doorsnedeschema van het EWF-concept met Ventec-dak, zonneschoorsteen en klimaatcascade">
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap intro" id="ewf" aria-labelledby="ewf-title">
+      <div>
+        <p class="section-label">Earth, Wind &amp; Fire</p>
+        <h2 id="ewf-title">Ventileren met hulp van de natuur.</h2>
+      </div>
+      <div>
+        <p class="intro-lead">
+          Earth, Wind &amp; Fire (EWF) is een lagedrukventilatieconcept voor
+          utiliteitsgebouwen. Het combineert winddruk, zoninstraling en een
+          klimaatcascade om de ventilatielucht te conditioneren.
+        </p>
+        <p class="section-copy">
+          Het Ventec-dak benut winddruk en de zonneschoorsteen zonnewarmte.
+          De klimaatcascade regelt de temperatuur en vochtigheid van de
+          ventilatietoevoerlucht. De simulator helpt ontwerpers en onderzoekers
+          de werking en energetische prestaties van deze componenten te verkennen.
+        </p>
+      </div>
+    </section>
+
+    <section class="simulator" id="simulator" aria-labelledby="sim-title">
+      <div class="wrap">
+        <div class="simulator-heading">
+          <div>
+            <p class="section-label">Van datainvoer naar prestatieanalyse</p>
+            <h2 id="sim-title">Een jaar natuurlijke ventilatie, stap voor stap doorgerekend.</h2>
+          </div>
+          <p class="section-copy">
+            Bereken de energetische prestaties van een EWF-systeem voor een
+            gebouw over een jaar, in tijdstappen van één uur. In Grasshopper voor
+            Rhino 9 kun je projectspecifieke invoer aanpassen en de berekening
+            per component volgen.
+          </p>
+        </div>
+        <div class="flow">
+          <article>
+            <span class="flow-number" aria-hidden="true">1</span>
+            <h3>Voer de parameters in</h3>
+            <p>Pas gebouwparameters aan en gebruik bezettingsprofielen en weerdata als invoer.</p>
+            <img class="flow-image" src="img/clash-ifc-modellen.png" alt="3D-model van gebouw en EWF-componenten voor ruimtelijke afstemming" loading="lazy">
+          </article>
+          <article>
+            <span class="flow-number" aria-hidden="true">2</span>
+            <h3>Voer de berekening uit</h3>
+            <p>Volg de berekening van zonneschoorsteen, Ventec-dak, overdrukruimte en klimaatcascade.</p>
+            <img class="flow-image" src="img/grasshopper-definitie.png" alt="Grasshopper-definitie van de EWF-simulator met invoer en gekoppelde componenten" loading="lazy">
+          </article>
+          <article>
+            <span class="flow-number" aria-hidden="true">3</span>
+            <h3>Bekijk de uitkomsten</h3>
+            <p>Bekijk de componenttoestanden en het energiegebruik per uur; exporteer de resultaten naar Excel.</p>
+            <div class="flow-image-frame">
+              <img class="flow-image" src="img/simulator-uitkomsten.png" alt="Uurlijkse simulatiegegevens in Excel, met onder meer wind, buitentemperatuur, zoninstraling en bezetting" loading="lazy">
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap benefits" aria-labelledby="benefits-title">
+      <div class="benefits-top">
+        <div>
+          <p class="section-label">Waarom deze simulator?</p>
+          <h2 id="benefits-title">Meer grip. Meer ruimte om te onderzoeken.</h2>
+        </div>
+        <p class="section-copy">
+          Bereken niet alleen het totale energiegebruik, maar ook hoe de
+          afzonderlijke EWF componenten zich gedurende het jaar gedragen. Zo kun je
+          invoer en scenario's gericht onderzoeken en vergelijken.
+        </p>
+      </div>
+      <div class="benefit-grid">
+        <article class="benefit">
+          <div class="benefit-tag"><span class="benefit-number" aria-hidden="true"><span>1</span></span>Inzichtelijk</div>
+          <h3>Zie hoe het systeem samenwerkt</h3>
+          <p>De simulator is opgebouwd uit afzonderlijke, gekoppelde EWF componenten. Dat maakt de berekening beter te volgen en te toetsen.</p>
+        </article>
+        <article class="benefit">
+          <div class="benefit-tag"><span class="benefit-number" aria-hidden="true"><span>2</span></span>Praktisch</div>
+          <h3>Werk in je vertrouwde ontwerpomgeving</h3>
+          <p>Open het Grasshopper-bestand in Rhino 9. Er is geen aanpassing in de broncode nodig om data in te voeren en berekeningen uit te voeren.</p>
+        </article>
+        <article class="benefit">
+          <div class="benefit-tag"><span class="benefit-number" aria-hidden="true"><span>3</span></span>Deelbaar</div>
+          <h3>Maak het concept bespreekbaar</h3>
+          <p>Exporteer de afmetingen en posities van EWF-componenten als 3D-model en maak de systeemopzet bespreekbaar met ontwerp- en bouwpartners. Voor IFC-export is de IFChopper-plugin nodig.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="start" id="start" aria-labelledby="start-title">
+      <div class="wrap start-inner">
+        <div>
+          <p class="section-label">Zelf ervaren?</p>
+          <h2 id="start-title">Open de simulator en ontdek wat je ermee kunt onderzoeken.</h2>
+          <p>
+            De open-source repository bevat het Grasshopper-bestand,
+            voorbeeldbestanden en een handleiding om je eerste simulatie te
+            starten. Ook kan de simulatie via een zelfstandige Python-runner worden uitgevoerd, zonder dat Rhino en Grasshopper nodig zijn.
+          </p>
+        </div>
+        <div class="actions">
+          <a class="button button-primary" href="https://github.com/Earth-Wind-Fire-simulation/tech-simulator">
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"></path>
+            </svg>
+            Bekijk de repository
+          </a>
+          <a class="button button-light" href="https://github.com/Earth-Wind-Fire-simulation/tech-simulator/blob/main/Handleiding%20EWF-Simulator.pdf">
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"></path>
+            </svg>
+            Start met de handleiding
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <aside class="wrap project-note" aria-label="Over EWF-Tech">
+      <p>
+        De EWF Tech Simulator is onderdeel van EWF-Tech: praktijkgericht onderzoek
+        naar het verder ontwikkelen en onderbouwen van het EWF-concept voor renovatie.
+      </p>
+      <div class="project-links">
+        <a class="button project-link" href="https://www.windesheim.nl/onderzoek/onderzoeksprojecten/energietransitie/ewf-tech" target="_blank" rel="noopener noreferrer">
+          <img src="img/logos/iconWindesheim.webp" alt="">
+          Over EWF-Tech bij Windesheim
+        </a>
+        <a class="button project-link" href="https://www.ewflab.nl/" target="_blank" rel="noopener noreferrer">
+          <img src="img/iconEWFlab.png" alt="">
+          EWF-Lab – Earth, Wind and Fire
+        </a>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <p>Earth, Wind &amp; Fire Tech Simulator</p>
+      <p>Open source · Rhino 9 &amp; Grasshopper</p>
+    </div>
+  </footer>
+</body>
+</html>
